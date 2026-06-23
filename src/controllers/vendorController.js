@@ -4,15 +4,16 @@ import jwt from "jsonwebtoken";
 import db from "../config/db.js";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import { checkAndCreateVendorSettlement } from "../controllers/vendorSettlementController.js";
 
 dotenv.config();
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
 });
 
 export const registerVendor = async (req, res) => {
@@ -697,6 +698,10 @@ export const updateBookingStatus = (req, res) => {
                     success: true,
                     message: "Booking marked as completed",
                 });
+
+                setImmediate(() => {
+                    checkAndCreateVendorSettlement(booking_id);
+                });
             }
         );
     } else {
@@ -718,146 +723,854 @@ export const updateBookingStatus = (req, res) => {
                 success: true,
                 message: "Booking updated successfully",
             });
+
+            setImmediate(() => {
+                checkAndCreateVendorSettlement(booking_id);
+            });
+
         });
     }
 };
 
 
 export const vendorForgotPassword = (req, res) => {
-  const { email } = req.body;
+    const { email } = req.body;
 
-  if (!email) {
-    return res.status(400).json({
-      success: false,
-      message: "Email is required",
-    });
-  }
-
-  vendorModel.findVendorByEmailS(email, (err, vendors) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: "DB Error" });
-    }
-
-    if (vendors.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Vendor not found",
-      });
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-
-    vendorModel.saveVendorOtp(email, otp, otpExpires, async (err2) => {
-      if (err2) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to save OTP",
+    if (!email) {
+        return res.status(400).json({
+            success: false,
+            message: "Email is required",
         });
-      }
+    }
 
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: "Vendor Password Reset OTP",
-          html: `
+    vendorModel.findVendorByEmailS(email, (err, vendors) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: "DB Error" });
+        }
+
+        if (vendors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Vendor not found",
+            });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+        vendorModel.saveVendorOtp(email, otp, otpExpires, async (err2) => {
+            if (err2) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to save OTP",
+                });
+            }
+
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: email,
+                    subject: "Vendor Password Reset OTP",
+                    html: `
             <h2>Vendor Password Reset</h2>
             <p>Your OTP is:</p>
             <h1>${otp}</h1>
             <p>Valid for 10 minutes</p>
           `,
-        });
+                });
 
-        return res.status(200).json({
-          success: true,
-          message: "OTP sent successfully",
+                return res.status(200).json({
+                    success: true,
+                    message: "OTP sent successfully",
+                });
+            } catch (error) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Email sending failed",
+                });
+            }
         });
-      } catch (error) {
-        return res.status(500).json({
-          success: false,
-          message: "Email sending failed",
-        });
-      }
     });
-  });
 };
 
 export const vendorVerifyResetOtp = (req, res) => {
-  const { email, otp } = req.body;
+    const { email, otp } = req.body;
 
-  if (!email || !otp) {
-    return res.status(400).json({
-      success: false,
-      message: "Email and OTP required",
+    if (!email || !otp) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and OTP required",
+        });
+    }
+
+    vendorModel.findVendorByEmailS(email, (err, vendors) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: "DB Error" });
+        }
+
+        if (vendors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Vendor not found",
+            });
+        }
+
+        const vendor = vendors[0];
+
+        if (vendor.otp_code !== otp) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP",
+            });
+        }
+
+        if (new Date(vendor.otp_expires) < new Date()) {
+            return res.status(400).json({
+                success: false,
+                message: "OTP expired",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "OTP verified successfully",
+        });
     });
-  }
-
-  vendorModel.findVendorByEmailS(email, (err, vendors) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: "DB Error" });
-    }
-
-    if (vendors.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Vendor not found",
-      });
-    }
-
-    const vendor = vendors[0];
-
-    if (vendor.otp_code !== otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
-
-    if (new Date(vendor.otp_expires) < new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP expired",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP verified successfully",
-    });
-  });
 };
 
 export const vendorResetPassword = async (req, res) => {
-  const { email, newPassword } = req.body;
+    const { email, newPassword } = req.body;
 
-  if (!email || !newPassword) {
-    return res.status(400).json({
-      success: false,
-      message: "Email and new password required",
-    });
-  }
-
-  try {
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    vendorModel.updateVendorPassword(email, hashedPassword, (err) => {
-      if (err) {
-        return res.status(500).json({
-          success: false,
-          message: "Password update failed",
+    if (!email || !newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and new password required",
         });
-      }
+    }
 
-      return res.status(200).json({
-        success: true,
-        message: "Password reset successfully",
-      });
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        vendorModel.updateVendorPassword(email, hashedPassword, (err) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Password update failed",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "Password reset successfully",
+            });
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Hashing failed",
+        });
+    }
+};
+
+
+// upi id updated
+
+export const updateVendorUpiId = (req, res) => {
+    const { vendorId, upiId } = req.body;
+
+    if (!vendorId || !upiId) {
+        return res.status(400).json({
+            success: false,
+            message: "Vendor ID and UPI ID are required",
+        });
+    }
+
+    const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z]{2,}$/;
+
+    if (!upiRegex.test(upiId)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid UPI ID",
+        });
+    }
+
+    vendorModel.updateVendorUpiId(
+        vendorId,
+        upiId,
+        (err, result) => {
+            if (err) {
+                if (err.code === "ER_DUP_ENTRY") {
+                    return res.status(400).json({
+                        success: false,
+                        message: "UPI ID already exists",
+                    });
+                }
+
+                return res.status(500).json({
+                    success: false,
+                    message: "Database error",
+                    error: err.message,
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Vendor not found",
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "UPI ID updated successfully",
+            });
+        }
+    );
+};
+
+
+export const getVendorUpi = (req, res) => {
+    const { vendorId } = req.params;
+
+    vendorModel.getVendorUpi(vendorId, (err, result) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "Database error",
+                error: err.message,
+            });
+        }
+
+        if (result.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Vendor not found",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            upi_id: result[0].upi_id,
+        });
     });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Hashing failed",
+};
+
+
+// limit three vendor list 
+
+export const getTopRatedVendorList = (req, res) => {
+    vendorModel.getTopRatedVendors((err, vendors) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "Database Error",
+            });
+        }
+
+        const updatedVendors = vendors.map((vendor) => ({
+            ...vendor,
+            government_id_url: vendor.government_id
+                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.government_id}`
+                : null,
+            profile_url: vendor.profile_photo
+                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.profile_photo}`
+                : null,
+        }));
+
+        res.status(200).json({
+            success: true,
+            vendors: updatedVendors,
+        });
     });
-  }
+};
+
+
+export const registerActivityVendor = async (req, res) => {
+
+    const {
+        fullName,
+        shopName,
+        phone,
+        whatsapp_number,
+        email,
+        password,
+        activity_id,
+        experience,
+        address1,
+        address2,
+        city,
+        pincode,
+        business_description,
+        languages_known,
+        availability,
+        start_time,
+        end_time
+    } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const profilePhoto = req.files?.profilePhoto
+        ? req.files.profilePhoto[0].filename
+        : null;
+
+    const governmentId = req.files?.governmentId
+        ? req.files.governmentId[0].filename
+        : null;
+
+    // Validation
+
+    if (!fullName || !phone || !activity_id) {
+        return res.status(400).json({
+            success: false,
+            message: "Full Name, Phone and Activity are required"
+        });
+    }
+
+    vendorModel.findActivityVendorByEmailOrPhone(
+        email,
+        phone,
+        (err, vendors) => {
+
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Database Error"
+                });
+            }
+
+            if (vendors.length > 0) {
+
+                return res.status(400).json({
+                    success: false,
+                    message: "Email or Phone already exists"
+                });
+
+            }
+
+            const vendorData = {
+
+                fullName,
+                shopName,
+                phone,
+                whatsappNumber: whatsapp_number || phone,
+                email,
+                password: hashedPassword,
+
+                activityId: activity_id,
+
+                experience,
+
+                address1,
+                address2,
+
+                city,
+                pincode,
+
+                profilePhoto,
+                governmentId,
+
+                businessDescription: business_description,
+
+                languagesKnown: languages_known,
+
+                availability,
+
+                startTime: start_time,
+
+                endTime: end_time
+
+            };
+
+            vendorModel.createActivityVendor(
+
+                vendorData,
+
+                (err, result) => {
+
+                    if (err) {
+
+                        return res.status(500).json({
+
+                            success: false,
+
+                            message: "Vendor Registration Failed",
+                            error: err.message
+
+                        });
+
+                    }
+
+                    const vendorId = result.insertId;
+
+                    let plans = [];
+
+                    try {
+
+                        plans = typeof req.body.plans === "string"
+
+                            ? JSON.parse(req.body.plans)
+
+                            : req.body.plans;
+
+                    }
+
+                    catch {
+
+                        plans = [];
+
+                    }
+
+                    if (plans.length === 0) {
+
+                        return res.status(201).json({
+
+                            success: true,
+
+                            message: "Vendor Registered Successfully",
+
+                            vendorId
+
+                        });
+
+                    }
+
+                    vendorModel.insertVendorPlans(
+
+                        vendorId,
+
+                        plans,
+
+                        (err2) => {
+
+                            if (err2) {
+
+                                return res.status(500).json({
+
+                                    success: false,
+
+                                    message: "Vendor created but plans failed"
+
+                                });
+
+                            }
+
+                            return res.status(201).json({
+
+                                success: true,
+
+                                message: "Activity Vendor Registered Successfully",
+
+                                vendorId
+
+                            });
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        }
+
+    );
+
+};
+
+export const getActivityCategories = (req, res) => {
+
+    vendorModel.getActivityCategories((err, results) => {
+
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "Database Error"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            categories: results
+        });
+
+    });
+
+};
+
+
+export const getActivityVendors = (req, res) => {
+    const { activityName } = req.params;
+
+    vendorModel.getActivityVendors(activityName, (err, rows) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "Database Error",
+                error: err.message,
+            });
+        }
+
+        const vendors = {};
+
+        rows.forEach((row) => {
+            if (!vendors[row.id]) {
+                vendors[row.id] = {
+                    id: row.id,
+                    full_name: row.full_name,
+                    shop_name: row.shop_name,
+                    phone: row.phone,
+                    email: row.email,
+                    activity_id: row.activity_id,
+                    activity_name: row.activity_name,
+                    experience: row.experience,
+                    address1: row.address1,
+                    address2: row.address2,
+                    city: row.city,
+                    pincode: row.pincode,
+                    business_description: row.business_description,
+                    languages_known: row.languages_known,
+                    availability: row.availability,
+                    start_time: row.start_time,
+                    end_time: row.end_time,
+                    average_rating: row.average_rating,
+                    profile_photo_url: row.profile_photo
+                        ? `${req.protocol}://${req.get("host")}/uploads/vendor/profile/${row.profile_photo}`
+                        : null,
+                    government_id_url: row.government_id
+                        ? `${req.protocol}://${req.get("host")}/uploads/vendor/government/${row.government_id}`
+                        : null,
+                    plans: []
+                };
+            }
+
+            if (row.plan_id) {
+                vendors[row.id].plans.push({
+                    id: row.plan_id,
+                    plan_name: row.plan_name,
+                    amount: row.amount,
+                    advance_amount: row.advance_amount
+                });
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            vendors: Object.values(vendors)
+        });
+    });
+};
+
+
+export const registerNearbyStall = async (req, res) => {
+    try {
+        const {
+            shop_name,
+            phone,
+            whatsapp_number,
+            email,
+            password,
+            address1,
+            address2,
+            city,
+            pincode,
+            description,
+            google_map_link,
+            latitude,
+            longitude,
+            opening_time,
+            closing_time,
+            listing_fee,
+            payment_status
+        } = req.body;
+
+        // ==========================
+        // VALIDATION
+        // ==========================
+
+        if (!shop_name) {
+            return res.status(400).json({
+                success: false,
+                message: "Shop name is required"
+            });
+        }
+
+        if (!phone) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number is required"
+            });
+        }
+
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                message: "Password is required"
+            });
+        }
+
+        if (!/^\d{10}$/.test(phone)) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number must be 10 digits"
+            });
+        }
+
+        if (pincode && !/^\d{6}$/.test(pincode)) {
+            return res.status(400).json({
+                success: false,
+                message: "Pincode must be 6 digits"
+            });
+        }
+
+        // ==========================
+        // FILES
+        // ==========================
+
+        const profile_photo =
+            req.files?.profile_photo?.[0]?.filename || null;
+
+        const government_id =
+            req.files?.government_id?.[0]?.filename || null;
+
+        if (!profile_photo) {
+            return res.status(400).json({
+                success: false,
+                message: "Profile photo is required"
+            });
+        }
+
+        if (!government_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Government ID is required"
+            });
+        }
+
+        // ==========================
+        // CHECK DUPLICATE
+        // ==========================
+
+        db.query(
+            "SELECT id FROM nearby_stalls WHERE phone = ? OR email = ?",
+            [phone, email],
+            async (err, result) => {
+
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        message: "Database Error",
+                        error: err.message
+                    });
+                }
+
+                if (result.length > 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Phone number or Email already registered"
+                    });
+                }
+
+                // ==========================
+                // HASH PASSWORD
+                // ==========================
+
+                const hashedPassword = await bcrypt.hash(password, 10);
+
+                // ==========================
+                // DEFAULT PAYMENT
+                // ==========================
+
+                const fee = listing_fee || 100;
+                const payment = payment_status || "pending";
+
+                // ==========================
+                // INSERT
+                // ==========================
+
+                const sql = `
+                    INSERT INTO nearby_stalls (
+                        shop_name,
+                        phone,
+                        whatsapp_number,
+                        email,
+                        password,
+                        address1,
+                        address2,
+                        city,
+                        pincode,
+                        description,
+                        google_map_link,
+                        latitude,
+                        longitude,
+                        profile_photo,
+                        government_id,
+                        opening_time,
+                        closing_time,
+                        listing_fee,
+                        payment_status,
+                        status
+                    )
+                    VALUES (
+                        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                    )
+                `;
+
+                db.query(
+                    sql,
+                    [
+                        shop_name,
+                        phone,
+                        whatsapp_number || phone,
+                        email,
+                        hashedPassword,
+                        address1,
+                        address2,
+                        city,
+                        pincode,
+                        description,
+                        google_map_link,
+                        latitude,
+                        longitude,
+                        profile_photo,
+                        government_id,
+                        opening_time,
+                        closing_time,
+                        fee,
+                        payment,
+                        "pending"
+                    ],
+                    (err, insertResult) => {
+
+                        if (err) {
+                            return res.status(500).json({
+                                success: false,
+                                message: "Registration Failed",
+                                error: err.message
+                            });
+                        }
+
+                        return res.status(201).json({
+                            success: true,
+                            message: "Nearby Stall Registered Successfully. Waiting for Admin Approval.",
+                            stall_id: insertResult.insertId
+                        });
+
+                    }
+                );
+
+            }
+        );
+
+    } catch (error) {
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error",
+            error: error.message
+        });
+
+    }
+};
+
+
+export const getNearbyStalls = (req, res) => {
+
+    const sql = `
+        SELECT *
+        FROM nearby_stalls
+        ORDER BY created_at DESC
+    `;
+
+    db.query(sql, (err, result) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "DB Error"
+            });
+        }
+
+        const data = result.map((s) => ({
+            ...s,
+            profile_url: s.profile_photo
+                ? `${req.protocol}://${req.get("host")}/uploads/${s.profile_photo}`
+                : null,
+            government_id_url: s.government_id
+                ? `${req.protocol}://${req.get("host")}/uploads/${s.government_id}`
+                : null
+        }));
+
+        return res.status(200).json({
+            success: true,
+            stalls: data
+        });
+    });
+};
+
+export const updateStallStatus = (req, res) => {
+    const { id, status } = req.body;
+
+    const allowed = ["pending", "approved", "active", "rejected"];
+
+    if (!allowed.includes(status)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid status"
+        });
+    }
+
+    const sql = `
+        UPDATE nearby_stalls
+        SET status = ?
+        WHERE id = ?
+    `;
+
+    db.query(sql, [status, id], (err) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "DB Error"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Stall status updated to ${status}`
+        });
+    });
+};
+
+export const getStallDetails = (req, res) => {
+    const { id } = req.params;
+
+    db.query(
+        `SELECT * FROM nearby_stalls WHERE id = ?`,
+        [id],
+        (err, result) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: "DB Error"
+                });
+            }
+
+            if (result.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Not found"
+                });
+            }
+
+            const stall = result[0];
+
+            stall.profile_url = stall.profile_photo
+                ? `${req.protocol}://${req.get("host")}/uploads/${stall.profile_photo}`
+                : null;
+
+            return res.status(200).json({
+                success: true,
+                stall
+            });
+        }
+    );
 };

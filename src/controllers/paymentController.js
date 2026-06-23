@@ -5,6 +5,7 @@ import bookingModel from "../models/bookingModel.js";
 import bookingItemModel from "../models/bookingItemModel.js";
 import paymentModel from "../models/paymentModel.js";
 import db from "../config/db.js";
+import { checkAndCreateVendorSettlement } from "../controllers/vendorSettlementController.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -16,7 +17,7 @@ export const createOrder = async (req, res) => {
     const { amount } = req.body;
 
     const options = {
-      amount: amount * 100, // rupees → paise
+      amount: Math.round(amount * 100),// rupees → paise
       currency: "INR",
       receipt: "rcpt_" + Date.now(),
     };
@@ -43,7 +44,8 @@ export const verifyPaymentAndCreateBooking = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      bookingData, // frontend sends full booking data
+      bookingData,
+      bookingType, // frontend sends full booking data
     } = req.body;
 
     console.log("razorpay-orderid", razorpay_order_id);
@@ -67,8 +69,41 @@ export const verifyPaymentAndCreateBooking = async (req, res) => {
       });
     }
 
+    // Activity booking
+    if (bookingType === "activity") {
+      return res.status(200).json({
+        success: true,
+        message: "Payment Verified"
+      });
+    }
+
     // 2. CREATE BOOKING
     const booking_number = "BK" + Date.now();
+
+    const [walletResult] = await db.promise().query(
+      `SELECT 
+      COALESCE(
+        SUM(
+          CASE
+            WHEN type='credit' THEN amount
+            WHEN type='debit' THEN -amount
+          END
+        ), 0
+      ) AS balance
+   FROM user_wallet
+   WHERE user_id = ?`,
+      [bookingData.user_id]
+    );
+
+    const wallet_balance = walletResult[0].balance;
+
+    // VALIDATION
+    if (bookingData.wallet_used > wallet_balance) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient wallet balance"
+      });
+    }
 
     const booking = await new Promise((resolve, reject) => {
       bookingModel.createBooking(
@@ -93,6 +128,10 @@ export const verifyPaymentAndCreateBooking = async (req, res) => {
     });
 
     const bookingId = booking.insertId;
+
+    setImmediate(() => {
+      checkAndCreateVendorSettlement(bookingId);
+    });
 
     // 3. CREATE BOOKING ITEMS
     for (let item of bookingData.services) {
@@ -125,7 +164,7 @@ export const verifyPaymentAndCreateBooking = async (req, res) => {
           razorpay_signature,
           amount: bookingData.total_amount,
           payment_status: "paid",
-          payment_type:"balance"
+          payment_type: "balance"
         },
         (err) => {
           if (err) reject(err);
@@ -133,6 +172,37 @@ export const verifyPaymentAndCreateBooking = async (req, res) => {
         }
       );
     });
+
+    // 5. WALLET DEBIT LOGIC (IF USED)
+    if (bookingData.wallet_used > 0) {
+
+      await new Promise((resolve, reject) => {
+        db.query(
+          `INSERT INTO user_wallet
+      (
+        user_id,
+        vendor_id,
+        booking_id,
+        amount,
+        type,
+        reason,
+        status
+      )
+      VALUES (?, ?, ?, ?, 'debit', 'Wallet Used For Booking', 'completed')`,
+          [
+            bookingData.user_id,
+            bookingData.vendor_id,
+            bookingId,
+            bookingData.wallet_used
+          ],
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+
+    }
 
     // 5. RESPONSE
     return res.status(200).json({
@@ -274,6 +344,10 @@ export const verifyBalancePayment = async (req, res) => {
 
     await connection.commit();
 
+    setImmediate(() => {
+      checkAndCreateVendorSettlement(booking_id);
+    });
+
     return res.status(200).json({
       success: true,
       message: "Balance payment successful",
@@ -284,7 +358,7 @@ export const verifyBalancePayment = async (req, res) => {
 
     try {
       await connection.rollback();
-    } catch (e) {}
+    } catch (e) { }
 
     return res.status(500).json({
       success: false,
@@ -332,4 +406,32 @@ export const getVendorPayments = (req, res) => {
       data: results,
     });
   });
+};
+
+
+// controllers/razorpayWebhookController.js
+
+export const razorpayWebhook = async (req, res) => {
+  try {
+    console.log("========== RAZORPAY WEBHOOK ==========");
+    console.log("Headers:");
+    console.log(req.headers);
+
+    console.log("Body:");
+    console.log(req.body.toString());
+
+    console.log("======================================");
+
+    return res.status(200).json({
+      success: true,
+      message: "Webhook received"
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false
+    });
+  }
 };

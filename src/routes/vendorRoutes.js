@@ -2,8 +2,12 @@ import express from "express";
 import {
   registerVendor, getVendorList, getServiceCategories, getSubServices, getVendorDetails,
   getVendorsByCategory, vendorLogin, getVendorBookings, updateBookingStatus, 
- vendorForgotPassword,vendorVerifyResetOtp ,vendorResetPassword } from "../controllers/vendorController.js";
+ vendorForgotPassword,vendorVerifyResetOtp ,vendorResetPassword ,updateVendorUpiId ,getVendorUpi, 
+ getTopRatedVendorList , registerActivityVendor ,getActivityCategories ,getActivityVendors ,
+registerNearbyStall, getNearbyStalls, updateStallStatus, getStallDetails} from "../controllers/vendorController.js";
 import { uploadGovId } from "../middlewares/upload.js";
+import { adminLogin } from "../controllers/adminController.js";
+import { getAllCompletedVendorSettlements , getPlatformProfitList ,getUserWalletList } from "../controllers/vendorSettlementController.js";
 
 const router = express.Router();
 
@@ -15,6 +19,15 @@ router.post(
   ]),
   registerVendor
 ); // register the vendor
+
+router.post(
+    "/register-activity",
+    uploadGovId.fields([
+        { name: "profilePhoto", maxCount: 1 },
+        { name: "governmentId", maxCount: 1 }
+    ]),
+    registerActivityVendor
+);
 
 router.post("/vendor/login", vendorLogin);
 
@@ -38,6 +51,42 @@ router.post("/vendor/verify-reset-otp", vendorVerifyResetOtp);
 
 router.post("/vendor/reset-password", vendorResetPassword);
 
+router.post("/super-login", adminLogin);
+
+router.post("/update-upi", updateVendorUpiId);
+
+router.get("/upi/:vendorId", getVendorUpi);
+
+router.get( "/admin/vendor-settlements", getAllCompletedVendorSettlements);
+
+router.get( "/platform-profit-list",  getPlatformProfitList);
+
+router.get( "/user-wallet-list", getUserWalletList);
+
+router.get("/top-rated-vendors", getTopRatedVendorList);
+
+router.get(
+    "/activity-categories",
+    getActivityCategories
+);
+
+router.get("/activity-vendors/:activityName", getActivityVendors);
+
+
+router.post(
+  "/near-register",
+  uploadGovId.fields([
+    { name: "profile_photo", maxCount: 1 },
+    { name: "government_id", maxCount: 1 }
+  ]),
+  registerNearbyStall
+);
+
+router.get("/near-list", getNearbyStalls);
+
+router.get("/:id", getStallDetails);
+
+router.put("/status-near", updateStallStatus);
 
 export default router;
 

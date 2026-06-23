@@ -1,5 +1,5 @@
 import express from "express";
-import { registerUser, loginUser, updateUserProfile, forgotPassword, verifyResetOtp, resetPassword } from "../controllers/userController.js";
+import { registerUser, loginUser, updateUserProfile, forgotPassword, verifyResetOtp, resetPassword ,getUsers ,getUserDashboard } from "../controllers/userController.js";
 import { uploadGovId } from "../middlewares/upload.js";
 import { addReview ,vendorReviewList } from "../controllers/reviewController.js";
 
@@ -27,5 +27,12 @@ router.post("/reset-password", resetPassword);
 router.post("/add-review", addReview);
 
 router.get("/vendor-rating/:vendorId", vendorReviewList);
+
+// admin list 
+router.get("/users-admin-list", getUsers);
+
+// user dashboard count list 
+
+router.get("/dashboard/:user_id", getUserDashboard);
 
 export default router;

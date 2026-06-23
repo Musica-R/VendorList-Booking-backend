@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyPaymentAndCreateBooking } from "../controllers/paymentController.js";
-import { updateBookingStatus ,getUserBookingsFull } from "../controllers/bookingController.js";
+import { updateBookingStatus ,getUserBookingsFull ,getAllBookings ,getUserWalletBalance} from "../controllers/bookingController.js";
 
 const router = express.Router();
 
@@ -11,5 +11,9 @@ router.post("/verify-payment", verifyPaymentAndCreateBooking);
 router.post("/update-status", updateBookingStatus);
 
 router.get("/booking-list/:user_id", getUserBookingsFull);
+
+router.get("/bookings-admin", getAllBookings);
+
+router.get("/wallet/balance/:user_id", getUserWalletBalance );
 
 export default router;

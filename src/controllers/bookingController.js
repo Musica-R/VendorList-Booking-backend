@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import adminModel from "../models/adminModel.js";
 
 export const updateBookingStatus = (req, res) => {
   try {
@@ -47,6 +48,8 @@ export const getUserBookingsFull = (req, res) => {
       v.shop_name,
       v.category_id,
       v.profile_photo,
+      v.phone,
+      v.whatsapp_number,
 
       s.category_name,
 
@@ -120,6 +123,8 @@ export const getUserBookingsFull = (req, res) => {
             vendor_profile: row.profile_photo
               ? `${req.protocol}://${req.get("host")}/uploads/${row.profile_photo}`
               : null,
+              vendor_phone:row.phone,
+              vendor_whatsapp:row.whatsapp_number,
             category_name: row.category_name,
           },
 
@@ -183,4 +188,72 @@ export const getUserBookingsFull = (req, res) => {
       data: Object.values(bookingsMap),
     });
   });
+};
+
+export const getAllBookings = (req, res) => {
+  adminModel.getAllBookings((err, bookings) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database Error",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      totalBookings: bookings.length,
+      bookings,
+    });
+  });
+};
+
+// user wallet using get logic
+
+export const getUserWalletBalance = (req, res) => {
+
+    try {
+
+        const { user_id } = req.params;
+
+        const sql = `
+            SELECT
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN type = 'credit' THEN amount
+                            WHEN type = 'debit' THEN -amount
+                        END
+                    ),
+                    0
+                ) AS wallet_balance
+            FROM user_wallet
+            WHERE user_id = ?
+            AND status = 'completed'
+        `;
+
+        db.query(sql, [user_id], (err, result) => {
+
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Database Error"
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                wallet_balance: Number(result[0].wallet_balance)
+            });
+
+        });
+
+    } catch (error) {
+
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+
+    }
+
 };

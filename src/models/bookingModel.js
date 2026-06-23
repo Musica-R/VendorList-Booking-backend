@@ -65,6 +65,10 @@ const getBookingsByUserId = (userId, callback) => {
   db.query(sql, [userId], callback);
 };
 
+
+
+
+
 export default {
   createBooking,
   getBookingById,

@@ -2,6 +2,7 @@ import userModel from "../models/userModel.js";
 import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
+import db from "../config/db.js";
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
 
 // console.log("EMAIL_USER:", process.env.EMAIL_USER);
 // console.log("EMAIL_PASS:", process.env.EMAIL_PASS);
@@ -437,6 +439,98 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Hashing failed",
+    });
+  }
+};
+
+export const getUsers = (req, res) => {
+  userModel.getAllUsers((err, users) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database Error"
+      });
+    }
+
+    const updatedUsers = users.map((user) => ({
+      ...user,
+      profileImageUrl: user.profileImage
+        ? `${req.protocol}://${req.get("host")}/uploads/${user.profileImage}`
+        : null
+    }));
+
+    return res.status(200).json({
+      success: true,
+      totalUsers: updatedUsers.length,
+      users: updatedUsers
+    });
+  });
+};
+
+// user dashboard count table 
+
+export const getUserDashboard = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    // Total Bookings
+    const [totalBookings] = await db.promise().query(
+      `SELECT COUNT(*) AS totalBookings
+       FROM bookings
+       WHERE user_id = ?`,
+      [user_id]
+    );
+
+    // Completed Bookings
+    const [completedBookings] = await db.promise().query(
+      `SELECT COUNT(*) AS completedBookings
+       FROM bookings
+       WHERE user_id = ?
+       AND booking_status = 'completed'`,
+      [user_id]
+    );
+
+    // Saved Vendors
+    const [savedVendors] = await db.promise().query(
+      `SELECT COUNT(*) AS savedVendors
+       FROM favorite_vendors
+       WHERE user_id = ?`,
+      [user_id]
+    );
+
+    // Wallet Balance
+    const [wallet] = await db.promise().query(
+      `SELECT
+          COALESCE(
+            SUM(
+              CASE
+                WHEN type = 'credit' THEN amount
+                WHEN type = 'debit' THEN -amount
+                ELSE 0
+              END
+            ),
+          0) AS walletAmount
+       FROM user_wallet
+       WHERE user_id = ?
+       AND status = 'completed'`,
+      [user_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalBookings: totalBookings[0].totalBookings,
+        completedBookings: completedBookings[0].completedBookings,
+        savedVendors: savedVendors[0].savedVendors,
+        walletAmount: wallet[0].walletAmount
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
     });
   }
 };

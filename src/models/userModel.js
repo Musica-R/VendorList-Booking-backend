@@ -98,7 +98,47 @@ const updatePassword = (email, newPassword, callback) => {
   db.query(sql, [newPassword, email], callback);
 };
 
+// admin panle list 
+const getAllUsers = (callback) => {
+  const sql = `
+    SELECT
+      u.id,
+      u.name,
+      u.email,
+      u.phone,
+      u.location,
+      u.profileImage,
+      u.created_at,
 
+      (
+        SELECT COUNT(*)
+        FROM bookings b
+        WHERE b.user_id = u.id
+    ) AS total_bookings,
+
+      (
+        SELECT COALESCE(SUM(p.amount),0)
+        FROM payments p
+        WHERE p.user_id = u.id
+        AND p.payment_status = 'paid'
+    ) AS total_paid
+
+
+    FROM users u
+
+    LEFT JOIN bookings b
+      ON u.id = b.user_id
+
+    LEFT JOIN payments p
+      ON p.user_id = u.id
+
+    GROUP BY u.id
+
+    ORDER BY u.id DESC
+  `;
+
+  db.query(sql, callback);
+};
 
 export default {
   createUser,
@@ -107,5 +147,6 @@ export default {
   updateUser,
   saveOtp,
   updatePassword,
+  getAllUsers,
 };
 
