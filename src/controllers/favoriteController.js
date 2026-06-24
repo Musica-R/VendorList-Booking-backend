@@ -1,6 +1,5 @@
 import {
-  addFavorite,
-  removeFavorite,
+  addFavorite, removeFavorite,
   checkFavorite,
   getUserFavorites
 } from "../models/favoriteModel.js";
@@ -96,6 +95,72 @@ export const getFavoriteVendors = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
+    });
+  }
+};
+
+
+import db from "../config/db.js";
+
+export const searchCategory = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || !q.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Search text is required"
+      });
+    }
+
+    const keyword = `%${q.trim()}%`;
+
+    // Search service category
+    const [services] = await db.promise().query(
+      `SELECT id, category_name
+     FROM service_categories
+     WHERE category_name LIKE ?
+     LIMIT 1`,
+      [keyword]
+    );
+
+    if (services.length > 0) {
+      return res.json({
+        success: true,
+        type: "service",
+        id: services[0].id,
+        name: services[0].category_name
+      });
+    }
+
+    // Search activity category
+    const [activities] = await db.promise().query(
+      `SELECT id, activity_name
+             FROM activity_categories
+             WHERE activity_name LIKE ?
+             LIMIT 1`,
+      [keyword]
+    );
+
+    if (activities.length > 0) {
+      return res.json({
+        success: true,
+        type: "activity",
+        id: activities[0].id,
+        name: activities[0].activity_name
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: "No service or activity found"
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
     });
   }
 };

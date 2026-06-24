@@ -5,6 +5,7 @@ import {
  vendorForgotPassword,vendorVerifyResetOtp ,vendorResetPassword ,updateVendorUpiId ,getVendorUpi, 
  getTopRatedVendorList , registerActivityVendor ,getActivityCategories ,getActivityVendors ,
 registerNearbyStall, getNearbyStalls, updateStallStatus, getStallDetails} from "../controllers/vendorController.js";
+
 import { uploadGovId } from "../middlewares/upload.js";
 import { adminLogin } from "../controllers/adminController.js";
 import { getAllCompletedVendorSettlements , getPlatformProfitList ,getUserWalletList } from "../controllers/vendorSettlementController.js";
@@ -87,6 +88,7 @@ router.get("/near-list", getNearbyStalls);
 router.get("/:id", getStallDetails);
 
 router.put("/status-near", updateStallStatus);
+
 
 export default router;
 

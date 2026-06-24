@@ -448,7 +448,7 @@ const findActivityVendorByEmailOrPhone = (email, phone, callback) => {
 
 
 export const getActivityVendors = (activityName, callback) => {
-    const sql = `
+  const sql = `
         SELECT
             av.*,
             ac.activity_name,
@@ -465,7 +465,84 @@ export const getActivityVendors = (activityName, callback) => {
         ORDER BY av.id DESC, ap.id ASC
     `;
 
-    db.query(sql, [activityName], callback);
+  db.query(sql, [activityName], callback);
+};
+
+const findSubServiceByName = (
+  categoryId,
+  serviceName,
+  callback
+) => {
+
+  const sql = `
+      SELECT id
+      FROM sub_services
+      WHERE category_id = ?
+      AND service_name = ?
+      LIMIT 1
+  `;
+
+  db.query(
+    sql,
+    [categoryId, serviceName],
+    callback
+  );
+
+};
+
+const addCustomSubService = (
+  categoryId,
+  serviceName,
+  callback
+) => {
+
+  const sql = `
+      INSERT INTO sub_services
+      (
+          category_id,
+          service_name
+      )
+      VALUES (?, ?)
+  `;
+
+  db.query(
+    sql,
+    [
+      categoryId,
+      serviceName
+    ],
+    callback
+  );
+
+};
+
+const addVendorService = (
+  vendorId,
+  subServiceId,
+  price,
+  callback
+) => {
+
+  const sql = `
+      INSERT INTO vendor_services
+      (
+          vendor_id,
+          sub_service_id,
+          price
+      )
+      VALUES (?, ?, ?)
+  `;
+
+  db.query(
+    sql,
+    [
+      vendorId,
+      subServiceId,
+      price
+    ],
+    callback
+  );
+
 };
 
 export default {
@@ -490,5 +567,8 @@ export default {
   getActivityCategories,
   createActivityVendor,
   findActivityVendorByEmailOrPhone,
-  getActivityVendors
+  getActivityVendors,
+  findSubServiceByName,
+  addCustomSubService,
+  addVendorService
 };

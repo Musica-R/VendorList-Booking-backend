@@ -105,11 +105,13 @@ export const getUserBookingsFull = (req, res) => {
       });
     }
 
-    const bookingsMap = {};
+    // console.log(results.map(r => r.booking_id));
+
+    const bookingsMap = new Map();
 
     results.forEach((row) => {
-      if (!bookingsMap[row.booking_id]) {
-        bookingsMap[row.booking_id] = {
+      if (!bookingsMap.has(row.booking_id)) {
+        bookingsMap.set(row.booking_id, {
           booking_id: row.booking_id,
           booking_number: row.booking_number,
           customer_name: row.customer_name,
@@ -123,8 +125,8 @@ export const getUserBookingsFull = (req, res) => {
             vendor_profile: row.profile_photo
               ? `${req.protocol}://${req.get("host")}/uploads/${row.profile_photo}`
               : null,
-              vendor_phone:row.phone,
-              vendor_whatsapp:row.whatsapp_number,
+            vendor_phone: row.phone,
+            vendor_whatsapp: row.whatsapp_number,
             category_name: row.category_name,
           },
 
@@ -144,17 +146,16 @@ export const getUserBookingsFull = (req, res) => {
           booking_status: row.booking_status,
           payment_status: row.payment_status,
 
-          // ✅ IMPORTANT ADDED FIELDS
           balance_amount: row.balance_amount,
           balance_payment_status: row.balance_payment_status,
 
-          payment: null, // ✅ will be filled safely if needed
+          payment: null,
 
           items: [],
-        };
+        });
       }
 
-      const booking = bookingsMap[row.booking_id];
+      const booking = bookingsMap.get(row.booking_id);
 
       // ✅ ADD PAYMENT ONLY ONCE (prevents duplication)
       if (!booking.payment && row.payment_id) {
@@ -183,10 +184,15 @@ export const getUserBookingsFull = (req, res) => {
       }
     });
 
-    return res.status(200).json({
-      success: true,
-      data: Object.values(bookingsMap),
-    });
+   const data = [...bookingsMap.values()];
+
+// console.log("Final response:", data.map(b => b.booking_id));
+
+return res.status(200).json({
+  success: true,
+  data,
+});
+
   });
 };
 
@@ -211,11 +217,11 @@ export const getAllBookings = (req, res) => {
 
 export const getUserWalletBalance = (req, res) => {
 
-    try {
+  try {
 
-        const { user_id } = req.params;
+    const { user_id } = req.params;
 
-        const sql = `
+    const sql = `
             SELECT
                 COALESCE(
                     SUM(
@@ -231,29 +237,29 @@ export const getUserWalletBalance = (req, res) => {
             AND status = 'completed'
         `;
 
-        db.query(sql, [user_id], (err, result) => {
+    db.query(sql, [user_id], (err, result) => {
 
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: "Database Error"
-                });
-            }
-
-            return res.status(200).json({
-                success: true,
-                wallet_balance: Number(result[0].wallet_balance)
-            });
-
-        });
-
-    } catch (error) {
-
+      if (err) {
         return res.status(500).json({
-            success: false,
-            message: error.message
+          success: false,
+          message: "Database Error"
         });
+      }
 
-    }
+      return res.status(200).json({
+        success: true,
+        wallet_balance: Number(result[0].wallet_balance)
+      });
+
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
 
 };

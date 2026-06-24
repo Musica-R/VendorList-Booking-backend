@@ -151,12 +151,21 @@ export const registerVendor = async (req, res) => {
         // =========================
         vendorModel.createVendor(vendorData, (err, result) => {
             if (err) {
-                console.log(err);
+                console.error(err);
+
+                if (err.code === "ER_DUP_ENTRY") {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Email already registered"
+                    });
+                }
+
                 return res.status(500).json({
                     success: false,
-                    message: "Vendor Registration Failed",
+                    message: "Vendor Registration Failed"
                 });
             }
+
 
             const vendorId = result.insertId;
 
@@ -188,26 +197,133 @@ export const registerVendor = async (req, res) => {
             // =========================
             // INSERT SERVICES
             // =========================
-            vendorModel.insertVendorServices(
-                vendorId,
-                parsedServices,
-                (err2) => {
-                    if (err2) {
-                        console.log(err2);
-                        return res.status(500).json({
-                            success: true,
-                            message: "Vendor created but services failed to save",
-                            vendorId,
-                        });
-                    }
+            const saveServices = (index = 0) => {
+
+                if (index >= parsedServices.length) {
 
                     return res.status(201).json({
                         success: true,
-                        message: "Vendor + Services Registered Successfully",
-                        vendorId,
+                        message: "Vendor Registered Successfully",
+                        vendorId
                     });
+
                 }
-            );
+
+                const service = parsedServices[index];
+
+                // Existing service
+                if (service.sub_service_id) {
+
+                    return vendorModel.addVendorService(
+
+                        vendorId,
+                        service.sub_service_id,
+                        service.price,
+
+                        (err) => {
+
+                            if (err) {
+                                return res.status(500).json({
+                                    success: false,
+                                    message: err.message
+                                });
+                            }
+
+                            saveServices(index + 1);
+
+                        }
+
+                    );
+
+                }
+
+                // Custom service
+
+                vendorModel.findSubServiceByName(
+
+                    category_id,
+                    service.service_name,
+
+                    (err, rows) => {
+
+                        if (err) {
+                            return res.status(500).json({
+                                success: false,
+                                message: err.message
+                            });
+                        }
+
+                        if (rows.length > 0) {
+
+                            return vendorModel.addVendorService(
+
+                                vendorId,
+                                rows[0].id,
+                                service.price,
+
+                                (err) => {
+
+                                    if (err) {
+                                        return res.status(500).json({
+                                            success: false,
+                                            message: err.message
+                                        });
+                                    }
+
+                                    saveServices(index + 1);
+
+                                }
+
+                            );
+
+                        }
+
+                        vendorModel.addCustomSubService(
+
+                            category_id,
+                            service.service_name,
+
+                            (err, result) => {
+
+                                if (err) {
+                                    return res.status(500).json({
+                                        success: false,
+                                        message: err.message
+                                    });
+                                }
+
+                                vendorModel.addVendorService(
+
+                                    vendorId,
+                                    result.insertId,
+                                    service.price,
+
+                                    (err) => {
+
+                                        if (err) {
+                                            return res.status(500).json({
+                                                success: false,
+                                                message: err.message
+                                            });
+                                        }
+
+                                        saveServices(index + 1);
+
+                                    }
+
+                                );
+
+                            }
+
+                        );
+
+                    }
+
+                );
+
+            };
+
+            saveServices();
         });
     });
 };
@@ -1574,3 +1690,5 @@ export const getStallDetails = (req, res) => {
         }
     );
 };
+
+
