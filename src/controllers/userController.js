@@ -534,3 +534,28 @@ export const getUserDashboard = async (req, res) => {
     });
   }
 };
+
+// user wallet histoty 
+
+
+import { getUserWalletHistory } from "../models/userModel.js";
+
+export const userWalletHistory = (req, res) => {
+  const { user_id } = req.params;
+
+  getUserWalletHistory(user_id, (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database Error",
+        error: err,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      total_transactions: result.length,
+      wallet_history: result,
+    });
+  });
+};

@@ -1,7 +1,7 @@
 import express from "express";
-import { registerUser, loginUser, updateUserProfile, forgotPassword, verifyResetOtp, resetPassword ,getUsers ,getUserDashboard } from "../controllers/userController.js";
+import { registerUser, loginUser, updateUserProfile, forgotPassword, verifyResetOtp, resetPassword, getUsers, getUserDashboard, userWalletHistory } from "../controllers/userController.js";
 import { uploadGovId } from "../middlewares/upload.js";
-import { addReview ,vendorReviewList } from "../controllers/reviewController.js";
+import { addReview, vendorReviewList } from "../controllers/reviewController.js";
 
 
 const router = express.Router();
@@ -34,5 +34,7 @@ router.get("/users-admin-list", getUsers);
 // user dashboard count list 
 
 router.get("/dashboard/:user_id", getUserDashboard);
+
+router.get("/wallet-history/:user_id", userWalletHistory);
 
 export default router;

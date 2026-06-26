@@ -114,6 +114,7 @@ const getAllVendors = (callback) => {
       v.start_time,
       v.end_time,
       v.rating,
+      v.created_at,
       v.terms_accepted
     FROM vendors v
     LEFT JOIN service_categories sc

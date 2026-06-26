@@ -140,6 +140,30 @@ const getAllUsers = (callback) => {
   db.query(sql, callback);
 };
 
+export const getUserWalletHistory = (userId, callback) => {
+  const sql = `
+    SELECT
+      uw.id,
+      uw.user_id,
+      uw.vendor_id,
+      v.full_name AS vendor_name,
+      v.shop_name,
+      uw.booking_id,
+      uw.amount,
+      uw.type,
+      uw.reason,
+      uw.status,
+      uw.created_at
+    FROM user_wallet uw
+    LEFT JOIN vendors v
+      ON uw.vendor_id = v.id
+    WHERE uw.user_id = ?
+    ORDER BY uw.created_at DESC
+  `;
+
+  db.query(sql, [userId], callback);
+};
+
 export default {
   createUser,
   findUserByEmailOrPhone,

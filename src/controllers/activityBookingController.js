@@ -214,3 +214,178 @@ export const updateActivityBookingStatus = (req, res) => {
         }
     );
 };
+
+
+// get activity vendors list for the admin
+
+export const getAllActivityVendors = (req, res) => {
+    const sql = `
+    SELECT
+      av.id,
+      av.full_name,
+      av.shop_name,
+      av.phone,
+      av.whatsapp_number,
+      av.email,
+      av.activity_id,
+      ac.activity_name,
+      av.experience,
+      av.address1,
+      av.address2,
+      av.city,
+      av.pincode,
+      av.profile_photo,
+      av.government_id,
+      av.business_description,
+      av.languages_known,
+      av.start_time,
+      av.end_time,
+      av.average_rating,
+      av.total_reviews,
+      av.rating,
+      av.upi_id,
+      av.terms_accepted,
+      av.created_at,
+      av.updated_at,
+      av.availability
+    FROM activity_vendors av
+    LEFT JOIN activity_categories ac
+      ON ac.id = av.activity_id
+    ORDER BY av.id DESC
+  `;
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({
+                success: false,
+                message: "Database Error",
+            });
+        }
+
+        const vendors = results.map((vendor) => ({
+            id: vendor.id,
+            full_name: vendor.full_name,
+            shop_name: vendor.shop_name,
+            phone: vendor.phone,
+            whatsapp_number: vendor.whatsapp_number,
+            email: vendor.email,
+
+            activity: {
+                id: vendor.activity_id,
+                name: vendor.activity_name,
+            },
+
+            experience: vendor.experience,
+
+            address: {
+                address1: vendor.address1,
+                address2: vendor.address2,
+                city: vendor.city,
+                pincode: vendor.pincode,
+            },
+
+            profile_photo: vendor.profile_photo
+                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.profile_photo}`
+                : null,
+
+            government_id: vendor.government_id
+                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.government_id}`
+                : null,
+
+            business_description: vendor.business_description,
+            languages_known: vendor.languages_known,
+
+            working_hours: {
+                start_time: vendor.start_time,
+                end_time: vendor.end_time,
+            },
+
+            ratings: {
+                average_rating: vendor.average_rating,
+                total_reviews: vendor.total_reviews,
+                rating: vendor.rating,
+            },
+
+            upi_id: vendor.upi_id,
+            availability: vendor.availability,
+            terms_accepted: vendor.terms_accepted,
+
+            created_at: vendor.created_at,
+            updated_at: vendor.updated_at,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            total: vendors.length,
+            data: vendors,
+        });
+    });
+};
+
+// near stall list 
+
+export const nearbyStallList = (req, res) => {
+    activityBookingModel.getNearbyStallList((err, results) => {
+        if (err) {
+            console.log(err);
+
+            return res.status(500).json({
+                success: false,
+                message: "Database Error",
+            });
+        }
+
+        const stalls = results.map((stall) => ({
+            id: stall.id,
+            shop_name: stall.shop_name,
+            phone: stall.phone,
+            whatsapp_number: stall.whatsapp_number,
+            email: stall.email,
+
+            address: {
+                address1: stall.address1,
+                address2: stall.address2,
+                city: stall.city,
+                pincode: stall.pincode,
+            },
+
+            description: stall.description,
+
+            google_map_link: stall.google_map_link,
+
+            location: {
+                latitude: stall.latitude,
+                longitude: stall.longitude,
+            },
+
+            profile_photo: stall.profile_photo
+                ? `${req.protocol}://${req.get("host")}/uploads/${stall.profile_photo}`
+                : null,
+
+            government_id: stall.government_id
+                ? `${req.protocol}://${req.get("host")}/uploads/${stall.government_id}`
+                : null,
+
+            opening_time: stall.opening_time,
+            closing_time: stall.closing_time,
+
+            status: stall.status,
+            is_verified: stall.is_verified,
+
+            listing_fee: stall.listing_fee,
+            payment_status: stall.payment_status,
+
+            created_at: stall.created_at,
+            updated_at: stall.updated_at,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: "Nearby Stall List",
+            total: stalls.length,
+            data: stalls,
+        });
+    });
+};
+

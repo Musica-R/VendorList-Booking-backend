@@ -43,13 +43,47 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             bookingData.booking_status,
 
             bookingData.razorpay_order_id,
-bookingData.razorpay_payment_id,
-bookingData.razorpay_signature
+            bookingData.razorpay_payment_id,
+            bookingData.razorpay_signature
         ],
         callback
     );
 };
 
+const getNearbyStallList = (callback) => {
+    const sql = `
+        SELECT
+            id,
+            shop_name,
+            phone,
+            whatsapp_number,
+            email,
+            address1,
+            address2,
+            city,
+            pincode,
+            description,
+            google_map_link,
+            latitude,
+            longitude,
+            profile_photo,
+            government_id,
+            opening_time,
+            closing_time,
+            status,
+            is_verified,
+            listing_fee,
+            payment_status,
+            created_at,
+            updated_at
+        FROM nearby_stalls
+        ORDER BY id DESC
+    `;
+
+    db.query(sql, callback);
+};
+
 export default {
     createBooking,
+    getNearbyStallList
 };
