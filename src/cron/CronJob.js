@@ -10,3 +10,12 @@ cron.schedule("0 8 * * *", () => {
     syncSettlement();
 
 });
+
+
+// cron.schedule("*/1 * * * *", () => {
+
+//     console.log("Checking Razorpay Settlement...");
+
+//     syncSettlement();
+
+// });

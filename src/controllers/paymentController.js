@@ -162,7 +162,7 @@ export const verifyPaymentAndCreateBooking = async (req, res) => {
           razorpay_order_id,
           razorpay_payment_id,
           razorpay_signature,
-          amount: bookingData.total_amount,
+          amount: bookingData.final_amount,
           payment_status: "paid",
           payment_type: "balance"
         },

@@ -13,11 +13,24 @@ const getBookingSettlementData = (bookingId, callback) => {
 
       (SELECT COUNT(*) FROM razorpay_settlements rs WHERE rs.booking_id = b.id) AS settlement_count,
 
-      COALESCE((
+     (
+    COALESCE((
         SELECT SUM(rs.net_amount)
         FROM razorpay_settlements rs
         WHERE rs.booking_id = b.id
-      ), 0) AS total_received
+    ),0)
+
+    +
+
+    COALESCE((
+        SELECT SUM(uw.amount)
+        FROM user_wallet uw
+        WHERE uw.booking_id = b.id
+        AND uw.type = 'debit'
+        AND uw.status = 'completed'
+    ),0)
+
+) AS total_received
 
     FROM bookings b
     WHERE b.id = ?
@@ -150,10 +163,10 @@ const getVendorCancelledBooking = (bookingId, callback) => {
 const checkWalletEntry = (bookingId, callback) => {
 
   db.query(
-  "SELECT id FROM user_wallet WHERE booking_id=? AND type='credit'",
-  [bookingId],
-  callback
-);
+    "SELECT id FROM user_wallet WHERE booking_id=? AND type='credit'",
+    [bookingId],
+    callback
+  );
 
 };
 

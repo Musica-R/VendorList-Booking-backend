@@ -149,8 +149,7 @@ export const getAllCompletedVendorSettlements = (req, res) => {
       GROUP BY booking_id
     ) rs ON rs.booking_id = b.id
 
-    WHERE vs.settlement_status = 'pending'
-      AND b.booking_status = 'completed'
+   WHERE b.booking_status = 'completed'
 
     ORDER BY vs.created_at DESC
   `;
@@ -271,6 +270,8 @@ export const creditUserWallet = (bookingId) => {
     );
 
 };
+
+// ==== Process settlement controller - Inserts data into the appropriate settlement table ===== //
 
 export const processSettlement = async (bookingId) => {
 
@@ -431,4 +432,78 @@ export const getUserWalletList = (req, res) => {
 
     });
 
+};
+
+
+// updating the settlement status
+
+export const updateVendorSettlementStatus = (req, res) => {
+  const { bookingId } = req.params;
+
+  const sql = `
+    UPDATE vendor_settlements
+    SET
+      settlement_status = 'paid',
+      settled_at = NOW()
+    WHERE booking_id = ?
+      AND settlement_status = 'pending'
+  `;
+
+  db.query(sql, [bookingId], (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err,
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Settlement not found or already paid",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor settlement marked as paid successfully.",
+    });
+  });
+};
+
+
+export const updateActivityVendorSettlementStatus = (req, res) => {
+  const { bookingId } = req.params;
+
+  const sql = `
+    UPDATE activity_vendor_settlements
+    SET
+      settlement_status = 'paid',
+      settled_at = NOW()
+    WHERE activity_booking_id = ?
+      AND settlement_status = 'pending'
+  `;
+
+  db.query(sql, [bookingId], (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err,
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Settlement not found or already paid",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Activity vendor settlement marked as paid successfully.",
+    });
+  });
 };
