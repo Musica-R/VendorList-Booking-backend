@@ -5,6 +5,7 @@ import db from "../config/db.js";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import { checkAndCreateVendorSettlement } from "../controllers/vendorSettlementController.js";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -1397,7 +1398,9 @@ export const registerNearbyStall = async (req, res) => {
             opening_time,
             closing_time,
             listing_fee,
-            payment_status
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature,
         } = req.body;
 
         // ==========================
@@ -1439,12 +1442,38 @@ export const registerNearbyStall = async (req, res) => {
             });
         }
 
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({
+                success: false,
+                message: "Payment verification details are missing"
+            });
+        }
+
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(body.toString())
+            .digest("hex");
+
+        if (expectedSignature !== razorpay_signature) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid payment signature"
+            });
+        }
+
         // ==========================
         // FILES
         // ==========================
 
         const profile_photo =
             req.files?.profile_photo?.[0]?.filename || null;
+
+        const profile_photo2 =
+            req.files?.profile_photo2?.[0]?.filename || null;
+
+        const profile_photo3 =
+            req.files?.profile_photo3?.[0]?.filename || null;
 
         const government_id =
             req.files?.government_id?.[0]?.filename || null;
@@ -1498,7 +1527,7 @@ export const registerNearbyStall = async (req, res) => {
                 // ==========================
 
                 const fee = listing_fee || 100;
-                const payment = payment_status || "pending";
+                const payment = "paid"; // verified above via signature check — always paid at this point
 
                 // ==========================
                 // INSERT
@@ -1520,15 +1549,20 @@ export const registerNearbyStall = async (req, res) => {
                         latitude,
                         longitude,
                         profile_photo,
+                        profile_photo2,
+                        profile_photo3,
                         government_id,
                         opening_time,
                         closing_time,
                         listing_fee,
                         payment_status,
-                        status
+                        status,
+                        razorpay_order_id, 
+                        razorpay_payment_id, 
+                        razorpay_signature
                     )
                     VALUES (
-                        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
                     )
                 `;
 
@@ -1549,12 +1583,17 @@ export const registerNearbyStall = async (req, res) => {
                         latitude,
                         longitude,
                         profile_photo,
+                        profile_photo2,
+                        profile_photo3,
                         government_id,
                         opening_time,
                         closing_time,
                         fee,
                         payment,
-                        "pending"
+                        "pending",
+                        razorpay_order_id,
+                        razorpay_payment_id,
+                        razorpay_signature
                     ],
                     (err, insertResult) => {
 
@@ -1610,6 +1649,12 @@ export const getNearbyStalls = (req, res) => {
             ...s,
             profile_url: s.profile_photo
                 ? `${req.protocol}://${req.get("host")}/uploads/${s.profile_photo}`
+                : null,
+            profile_url2: s.profile_photo
+                ? `${req.protocol}://${req.get("host")}/uploads/${s.profile_photo2}`
+                : null,
+            profile_url3: s.profile_photo
+                ? `${req.protocol}://${req.get("host")}/uploads/${s.profile_photo3}`
                 : null,
             government_id_url: s.government_id
                 ? `${req.protocol}://${req.get("host")}/uploads/${s.government_id}`

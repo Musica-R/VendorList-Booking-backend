@@ -1,7 +1,12 @@
 import multer from "multer";
+import sharp from "sharp";
 import path from "path";
+import fs from "fs";
 
-// storage config
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -11,7 +16,6 @@ const storage = multer.diskStorage({
   },
 });
 
-// file filter (PDF, images only)
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /pdf|png|jpg|jpeg|webp/;
   const ext = path.extname(file.originalname).toLowerCase();
@@ -19,7 +23,7 @@ const fileFilter = (req, file, cb) => {
   if (allowedTypes.test(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF, PNG, JPG, JPEG, WEBP , png allowed"));
+    cb(new Error("Only PDF, PNG, JPG, JPEG and WEBP files are allowed"));
   }
 };
 

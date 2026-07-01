@@ -9,9 +9,14 @@ import {
 
 import { uploadGovId } from "../middlewares/upload.js";
 import { adminLogin } from "../controllers/adminController.js";
-import { getAllCompletedVendorSettlements, getPlatformProfitList, 
-  getUserWalletList, updateVendorSettlementStatus, 
-  updateActivityVendorSettlementStatus } from "../controllers/vendorSettlementController.js";
+import {
+  getAllCompletedVendorSettlements, getPlatformProfitList,
+  getUserWalletList, updateVendorSettlementStatus,
+  updateActivityVendorSettlementStatus
+} from "../controllers/vendorSettlementController.js";
+import { compressImage } from "../middlewares/compressImage.js";
+
+import { getNearbyStallProfitList ,getPlatformProfitSummary } from "../controllers/nearbyStallProfitController.js"
 
 const router = express.Router();
 
@@ -21,6 +26,7 @@ router.post(
     { name: "profilePhoto", maxCount: 1 },
     { name: "governmentId", maxCount: 1 }
   ]),
+  compressImage,
   registerVendor
 ); // register the vendor
 
@@ -30,6 +36,7 @@ router.post(
     { name: "profilePhoto", maxCount: 1 },
     { name: "governmentId", maxCount: 1 }
   ]),
+  compressImage,
   registerActivityVendor
 );
 
@@ -81,12 +88,21 @@ router.post(
   "/near-register",
   uploadGovId.fields([
     { name: "profile_photo", maxCount: 1 },
+    { name: "profile_photo2", maxCount: 1 },
+    { name: "profile_photo3", maxCount: 1 },
     { name: "government_id", maxCount: 1 }
   ]),
+  compressImage,
   registerNearbyStall
 );
 
+
+
 router.get("/near-list", getNearbyStalls);
+
+router.get( "/nearby-stall-profit-list", getNearbyStallProfitList);
+
+router.get("/platform-profit-summary", getPlatformProfitSummary);
 
 router.get("/:id", getStallDetails);
 
@@ -95,6 +111,8 @@ router.put("/status-near", updateStallStatus);
 router.put("/vendor-settlement/pay/:bookingId", updateVendorSettlementStatus);
 
 router.put("/activity-vendor-settlement/pay/:bookingId", updateActivityVendorSettlementStatus);
+
+
 
 export default router;
 

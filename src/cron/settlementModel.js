@@ -90,10 +90,85 @@ const getActivityBookingByPaymentId = (
 
 };
 
+// Get Nearby Stall Details
+
+const getNearbyStallByPaymentId = (paymentId, callback) => {
+
+    const sql = `
+        SELECT
+            id,
+            listing_fee,
+            razorpay_payment_id
+        FROM nearby_stalls
+        WHERE razorpay_payment_id = ?
+        LIMIT 1
+    `;
+
+    db.query(sql, [paymentId], callback);
+
+};
+
+// Check Already Exists near by stall 
+
+const checkNearbyStallProfitExists = (paymentId, callback) => {
+
+    const sql = `
+        SELECT id
+        FROM nearby_stall_profits
+        WHERE razorpay_payment_id = ?
+    `;
+
+    db.query(sql, [paymentId], callback);
+
+};
+
+// Insert Nearby Stall Profit
+
+const insertNearbyStallProfit = (data, callback) => {
+
+    const sql = `
+        INSERT INTO nearby_stall_profits (
+
+            stall_id,
+
+            razorpay_settlement_id,
+            razorpay_payment_id,
+
+            listing_fee,
+
+            razorpay_fee,
+            razorpay_tax,
+
+            platform_profit,
+
+            settled_at
+
+        )
+        VALUES (?,?,?,?,?,?,?,?)
+    `;
+
+    db.query(sql, [
+
+        data.stallId,
+        data.razorpaySettlementId,
+        data.razorpayPaymentId,
+        data.listingFee,
+        data.razorpayFee,
+        data.razorpayTax,
+        data.platformProfit,
+        data.settledAt
+
+    ], callback);
+
+};
+
 export default {
 
     checkSettlementExists,
     getPaymentDetails,
     insertSettlement,
-    getActivityBookingByPaymentId
+    getActivityBookingByPaymentId,
+    checkNearbyStallProfitExists,
+    getNearbyStallByPaymentId,
+    insertNearbyStallProfit
 };

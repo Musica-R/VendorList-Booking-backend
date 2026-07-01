@@ -2,12 +2,14 @@ import express from "express";
 import { registerUser, loginUser, updateUserProfile, forgotPassword, verifyResetOtp, resetPassword, getUsers, getUserDashboard, userWalletHistory } from "../controllers/userController.js";
 import { uploadGovId } from "../middlewares/upload.js";
 import { addReview, vendorReviewList } from "../controllers/reviewController.js";
+import { compressImage } from "../middlewares/compressImage.js";
+
 
 
 const router = express.Router();
 
 // Register
-router.post("/register", uploadGovId.single("profileImage"), registerUser);
+router.post("/register", uploadGovId.single("profileImage"), compressImage, registerUser);
 
 // Login
 router.post("/login", loginUser);

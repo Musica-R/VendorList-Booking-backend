@@ -3,6 +3,7 @@ import settlementModel from "../cron/settlementModel.js";
 import { checkAndCreateVendorSettlement } from "../controllers/vendorSettlementController.js";
 import { processSettlement } from "../controllers/vendorSettlementController.js"
 import { processActivitySettlement } from "../controllers/activityVendorSettlementController.js"
+import { processNearbyStallProfit } from "../controllers/nearbyStallProfitController.js";
 
 export const syncSettlement = async () => {
 
@@ -72,7 +73,70 @@ export const syncSettlement = async () => {
 
                                         if (activity.length === 0) {
 
-                                            console.log("Payment Not Found");
+                                            // 👇 Paste the entire Nearby Stall code here
+
+                                            settlementModel.getNearbyStallByPaymentId(
+                                                paymentId,
+                                                (err5, stall) => {
+
+                                                    if (err5) return;
+
+                                                    if (stall.length === 0) {
+                                                        console.log("Payment Not Found");
+                                                        return;
+                                                    }
+
+                                                    const stallInfo = stall[0];
+
+                                                    const data = {
+
+                                                        razorpaySettlementId: settlement.settlement_id,
+
+                                                        razorpayPaymentId: paymentId,
+
+                                                        bookingId: stallInfo.id,
+
+                                                        bookingType: "nearby_stall",
+
+                                                        vendorId: null,
+
+                                                        userId: null,
+
+                                                        grossAmount: settlement.amount / 100,
+
+                                                        fee: settlement.fee / 100,
+
+                                                        tax: settlement.tax / 100,
+
+                                                        netAmount: settlement.credit / 100,
+
+                                                        settledAt: new Date(
+                                                            settlement.settled_at * 1000
+                                                        )
+
+                                                    };
+
+                                                    settlementModel.insertSettlement(
+                                                        data,
+                                                        (err6) => {
+
+                                                            if (err6) {
+                                                                console.log(err6);
+                                                                return;
+                                                            }
+
+                                                            console.log(
+                                                                `Nearby Stall Settlement Saved : ${paymentId}`
+                                                            );
+
+                                                            processNearbyStallProfit(paymentId);
+
+                                                        }
+                                                    );
+
+                                                }
+                                            );
+
                                             return;
 
                                         }
