@@ -389,3 +389,23 @@ export const nearbyStallList = (req, res) => {
     });
 };
 
+export const activityBookingList = (req, res) => {
+
+    activityBookingModel.getActivityBookingList((err, result) => {
+
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "Database Error",
+                error: err.message
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            count: result.length,
+            data: result
+        });
+    });
+
+};

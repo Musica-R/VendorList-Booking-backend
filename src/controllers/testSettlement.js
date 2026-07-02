@@ -2,8 +2,8 @@ import { checkAndCreateVendorSettlement ,createPlatformProfit ,creditUserWallet 
 import { processActivitySettlement } from "../controllers/activityVendorSettlementController.js";
 import { processNearbyStallProfit } from "../controllers/nearbyStallProfitController.js";
 
-// checkAndCreateVendorSettlement(20);
+checkAndCreateVendorSettlement(22);
 // // createPlatformProfit(3);
 // creditUserWallet(15);
-processActivitySettlement("pay_T5nqfW2oM0yL7s");
-processNearbyStallProfit("pay_T8AxiYUHMsqJ1U");
+// processActivitySettlement("pay_T5nqfW2oM0yL7s");
+// processNearbyStallProfit("pay_T8AxiYUHMsqJ1U");

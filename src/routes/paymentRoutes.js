@@ -1,5 +1,8 @@
 import express from "express";
-import { createOrder, createBalanceOrder, verifyBalancePayment ,getUserPayments , getVendorPayments ,razorpayWebhook} from "../controllers/paymentController.js";
+import {
+    createOrder, createBalanceOrder, verifyBalancePayment,
+    getUserPayments, getVendorPayments, razorpayWebhook, createWalletOnlyBooking
+} from "../controllers/paymentController.js";
 
 const router = express.Router();
 
@@ -20,6 +23,9 @@ router.get("/vendor-pay-history/:vendor_id", getVendorPayments);
 
 
 router.post("/razorpay", express.raw({ type: "application/json" }), razorpayWebhook);
+
+
+router.post("/wallet-only", createWalletOnlyBooking);
 
 
 export default router;

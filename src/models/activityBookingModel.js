@@ -83,7 +83,63 @@ const getNearbyStallList = (callback) => {
     db.query(sql, callback);
 };
 
+
+const getActivityBookingList = (callback) => {
+
+    const sql = `
+        SELECT
+            ab.id,
+            ab.booking_number,
+
+            u.id AS user_id,
+            u.name AS user_name,
+            u.phone AS user_phone,
+
+            av.id AS activity_vendor_id,
+            av.full_name AS vendor_name,
+            av.shop_name,
+
+            ac.id AS activity_id,
+            ac.activity_name,
+
+            avp.id AS plan_id,
+            avp.plan_name,
+            avp.amount,
+            avp.advance_amount,
+
+            ab.customer_name,
+            ab.customer_phone,
+            ab.customer_address,
+            ab.booking_date,
+            ab.booking_time,
+            ab.total_amount,
+            ab.advance_amount AS paid_advance_amount,
+            ab.payment_status,
+            ab.booking_status,
+            ab.created_at
+
+        FROM activity_bookings ab
+
+        LEFT JOIN users u
+            ON ab.user_id = u.id
+
+        LEFT JOIN activity_vendors av
+            ON ab.activity_vendor_id = av.id
+
+        LEFT JOIN activity_categories ac
+            ON av.activity_id = ac.id
+
+        LEFT JOIN activity_vendor_plans avp
+            ON ab.activity_plan_id = avp.id
+
+        ORDER BY ab.id DESC
+    `;
+
+    db.query(sql, callback);
+};
+
 export default {
     createBooking,
-    getNearbyStallList
+    getNearbyStallList,
+    getActivityBookingList
 };

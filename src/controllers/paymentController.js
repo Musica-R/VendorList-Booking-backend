@@ -233,6 +233,79 @@ export const createBalanceOrder = async (req, res) => {
   });
 };
 
+// wallet only logic
+
+
+export const createWalletOnlyBooking = async (req, res) => {
+  try {
+    const bookingData = req.body;
+
+    const [walletResult] = await db.promise().query(
+      `SELECT COALESCE(SUM(CASE WHEN type='credit' THEN amount WHEN type='debit' THEN -amount END),0) AS balance
+       FROM user_wallet WHERE user_id = ?`,
+      [bookingData.user_id]
+    );
+    const wallet_balance = walletResult[0].balance;
+
+    if (bookingData.total_amount > wallet_balance) {
+      return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+    }
+
+    const booking_number = "BK" + Date.now();
+
+    const booking = await new Promise((resolve, reject) => {
+      bookingModel.createBooking(
+        {
+          booking_number,
+          user_id: bookingData.user_id,
+          vendor_id: bookingData.vendor_id,
+          customer_name: bookingData.customer_name,
+          customer_phone: bookingData.customer_phone,
+          customer_address: bookingData.customer_address,
+          booking_date: bookingData.booking_date,
+          booking_time: bookingData.booking_time,
+          total_amount: bookingData.total_amount,
+          payment_status: "paid",
+          booking_status: "pending",
+        },
+        (err, result) => (err ? reject(err) : resolve(result))
+      );
+    });
+
+    const bookingId = booking.insertId;
+
+    for (let item of bookingData.services) {
+      await new Promise((resolve, reject) => {
+        bookingItemModel.createBookingItem(
+          {
+            booking_id: bookingId,
+            category_id: bookingData.category_id,
+            sub_service_id: item.sub_service_id,
+            price: item.price,
+            quantity: 1,
+          },
+          (err) => (err ? reject(err) : resolve())
+        );
+      });
+    }
+
+    // Wallet debit for the FULL amount — no payments row at all
+    await new Promise((resolve, reject) => {
+      db.query(
+        `INSERT INTO user_wallet (user_id, vendor_id, booking_id, amount, type, reason, status)
+         VALUES (?, ?, ?, ?, 'debit', 'Wallet Used For Booking (Full)', 'completed')`,
+        [bookingData.user_id, bookingData.vendor_id, bookingId, bookingData.total_amount],
+        (err) => (err ? reject(err) : resolve())
+      );
+    });
+
+    return res.status(200).json({ success: true, message: "Booking Created Successfully", bookingId });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
 export const verifyBalancePayment = async (req, res) => {
   const connection = await db.promise().getConnection();
 
