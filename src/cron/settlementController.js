@@ -11,12 +11,12 @@ export const syncSettlement = async () => {
         console.log("Settlement Sync Started");
         const today = new Date();
 
-        // const year = today.getFullYear();
-        // const month = String(today.getMonth() + 1).padStart(2, "0");
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
         // const day = String(today.getDate()).padStart(2, "0");
 
-        const year = 2026;
-        const month = "02";
+        // const year = 2026;
+        // const month = "07";
         // const day = "26";
 
         const response = await axios.get(

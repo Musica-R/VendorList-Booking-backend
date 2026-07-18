@@ -14,12 +14,7 @@ export const createActivityBooking = (req, res) => {
             booking_date,
             booking_time,
             total_amount,
-            advance_amount,
-            payment_status,
             booking_status,
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
         } = req.body;
 
         const booking_number = `ACT${Date.now()}`;
@@ -35,14 +30,7 @@ export const createActivityBooking = (req, res) => {
             booking_date,
             booking_time,
             total_amount,
-            advance_amount,
-
-            payment_status: payment_status || "pending",
             booking_status: booking_status || "Pending",
-
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
         };
 
         activityBookingModel.createBooking(bookingData, (err, result) => {
@@ -90,10 +78,6 @@ export const getUserActivityBookings = (req, res) => {
 
       ac.activity_name,
 
-      ap.plan_name,
-      ap.amount,
-      ap.advance_amount,
-
       ua.address_type,
       ua.flat,
       ua.area,
@@ -105,9 +89,6 @@ export const getUserActivityBookings = (req, res) => {
       ab.booking_time,
 
       ab.total_amount,
-      ab.advance_amount,
-
-      ab.payment_status,
       ab.booking_status
 
   FROM activity_bookings ab
@@ -159,7 +140,6 @@ export const getUserActivityBookings = (req, res) => {
             plan: {
                 plan_name: row.plan_name,
                 amount: row.amount,
-                advance_amount: row.advance_amount,
             },
 
             address: {
@@ -175,9 +155,6 @@ export const getUserActivityBookings = (req, res) => {
             booking_time: row.booking_time,
 
             total_amount: row.total_amount,
-            advance_amount: row.advance_amount,
-
-            payment_status: row.payment_status,
             booking_status: row.booking_status,
         }));
 
@@ -226,7 +203,6 @@ export const getAllActivityVendors = (req, res) => {
       av.shop_name,
       av.phone,
       av.whatsapp_number,
-      av.email,
       av.activity_id,
       ac.activity_name,
       av.experience,
@@ -235,16 +211,12 @@ export const getAllActivityVendors = (req, res) => {
       av.city,
       av.pincode,
       av.profile_photo,
-      av.government_id,
-      av.business_description,
-      av.languages_known,
       av.start_time,
       av.end_time,
       av.average_rating,
       av.total_reviews,
       av.rating,
       av.upi_id,
-      av.terms_accepted,
       av.created_at,
       av.updated_at,
       av.availability
@@ -269,7 +241,6 @@ export const getAllActivityVendors = (req, res) => {
             shop_name: vendor.shop_name,
             phone: vendor.phone,
             whatsapp_number: vendor.whatsapp_number,
-            email: vendor.email,
 
             activity: {
                 id: vendor.activity_id,
@@ -289,13 +260,6 @@ export const getAllActivityVendors = (req, res) => {
                 ? `${req.protocol}://${req.get("host")}/uploads/${vendor.profile_photo}`
                 : null,
 
-            government_id: vendor.government_id
-                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.government_id}`
-                : null,
-
-            business_description: vendor.business_description,
-            languages_known: vendor.languages_known,
-
             working_hours: {
                 start_time: vendor.start_time,
                 end_time: vendor.end_time,
@@ -309,7 +273,6 @@ export const getAllActivityVendors = (req, res) => {
 
             upi_id: vendor.upi_id,
             availability: vendor.availability,
-            terms_accepted: vendor.terms_accepted,
 
             created_at: vendor.created_at,
             updated_at: vendor.updated_at,
@@ -408,4 +371,138 @@ export const activityBookingList = (req, res) => {
         });
     });
 
+};
+
+
+
+export const getActiveActivityVendors = (req, res) => {
+    const sql = `
+        SELECT
+            av.id,
+            av.full_name,
+            av.shop_name,
+            av.phone,
+            av.whatsapp_number,
+
+            ac.id AS activity_id,
+            ac.activity_name,
+
+            av.experience,
+            av.address1,
+            av.address2,
+            av.city,
+            av.pincode,
+
+            av.profile_photo,
+
+            av.start_time,
+            av.end_time,
+
+            av.average_rating,
+            av.total_reviews,
+            av.rating,
+
+            av.upi_id,
+            av.availability,
+
+            av.created_at,
+            av.updated_at,
+
+            ap.id AS plan_id,
+            ap.plan_name,
+            ap.amount,
+            ap.advance_amount,
+            ap.status
+
+        FROM activity_vendors av
+
+        LEFT JOIN activity_categories ac
+            ON ac.id = av.activity_id
+
+        LEFT JOIN activity_vendor_plans ap
+            ON ap.vendor_id = av.id
+
+        WHERE ap.status = 'Active'
+
+        ORDER BY av.id DESC;
+    `;
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "Database Error",
+                error: err.message,
+            });
+        }
+
+        const vendorsMap = {};
+
+        results.forEach((row) => {
+            if (!vendorsMap[row.id]) {
+                vendorsMap[row.id] = {
+                    id: row.id,
+                    full_name: row.full_name,
+                    shop_name: row.shop_name,
+                    phone: row.phone,
+                    whatsapp_number: row.whatsapp_number,
+
+                    activity: {
+                        id: row.activity_id,
+                        name: row.activity_name,
+                    },
+
+                    experience: row.experience,
+
+                    address: {
+                        address1: row.address1,
+                        address2: row.address2,
+                        city: row.city,
+                        pincode: row.pincode,
+                    },
+
+                    profile_photo: row.profile_photo
+                        ? `${req.protocol}://${req.get("host")}/uploads/${row.profile_photo}`
+                        : null,
+
+                    working_hours: {
+                        start_time: row.start_time,
+                        end_time: row.end_time,
+                    },
+
+                    ratings: {
+                        average_rating: row.average_rating,
+                        total_reviews: row.total_reviews,
+                        rating: row.rating,
+                    },
+
+                    upi_id: row.upi_id,
+                    availability: row.availability,
+
+                    created_at: row.created_at,
+                    updated_at: row.updated_at,
+
+                    plans: [],
+                };
+            }
+
+            if (row.plan_id) {
+                vendorsMap[row.id].plans.push({
+                    id: row.plan_id,
+                    plan_name: row.plan_name,
+                    amount: row.amount,
+                    advance_amount: row.advance_amount,
+                    status: row.status,
+                });
+            }
+        });
+
+        const vendors = Object.values(vendorsMap);
+
+        return res.status(200).json({
+            success: true,
+            total: vendors.length,
+            data: vendors,
+        });
+    });
 };

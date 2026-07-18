@@ -521,8 +521,7 @@ export const getUserDashboard = async (req, res) => {
       data: {
         totalBookings: totalBookings[0].totalBookings,
         completedBookings: completedBookings[0].completedBookings,
-        savedVendors: savedVendors[0].savedVendors,
-        walletAmount: wallet[0].walletAmount
+        savedVendors: savedVendors[0].savedVendors
       }
     });
 

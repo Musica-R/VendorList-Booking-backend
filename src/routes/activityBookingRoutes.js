@@ -1,6 +1,9 @@
 import express from "express";
 
-import { createActivityBooking,  getUserActivityBookings, updateActivityBookingStatus,  getAllActivityVendors , nearbyStallList , activityBookingList} from "../controllers/activityBookingController.js";
+import {
+    createActivityBooking, getUserActivityBookings, updateActivityBookingStatus, getAllActivityVendors,
+    nearbyStallList, activityBookingList, getActiveActivityVendors
+} from "../controllers/activityBookingController.js";
 import { getAllActivityVendorSettlements } from "../controllers/activityVendorSettlementController.js";
 
 
@@ -16,9 +19,10 @@ router.get("/admin/activity-bookings", getAllActivityVendors); // activity vendo
 
 router.get("/nearby-stalls", nearbyStallList);
 
-router.get( "/activity-vendor-settlements", getAllActivityVendorSettlements);
+router.get("/activity-vendor-settlements", getAllActivityVendorSettlements);
 
 router.get("/activity-bookings", activityBookingList);
 
+router.get("/activity-vendors/active", getActiveActivityVendors);
 
 export default router;

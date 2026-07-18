@@ -34,4 +34,9 @@ db.getConnection((err, connection) => {
   }
 });
 
+db.query("SELECT DATABASE() AS db", (err, results) => {
+  if (err) console.error(err);
+  else console.log("Connected Database:", results[0].db);
+});
+
 export default db;

@@ -4,7 +4,6 @@ import cors from "cors";
 import userRoutes from "./routes/userRoutes.js";
 import vendorRoutes from "./routes/vendorRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
-import paymentRoutes from "./routes/paymentRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import slot from "./routes/slotRoutes.js"
 import fav from "./routes/favoriteRoutes.js"
@@ -36,7 +35,6 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api/users", userRoutes);
 app.use("/api/vendors", vendorRoutes);
 app.use("/api/address", addressRoutes);
-app.use("/api/payment", paymentRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/slot", slot);
 app.use("/api/fav",fav);

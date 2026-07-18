@@ -20,25 +20,9 @@ import { getNearbyStallProfitList ,getPlatformProfitSummary } from "../controlle
 
 const router = express.Router();
 
-router.post(
-  "/vendorregister",
-  uploadGovId.fields([
-    { name: "profilePhoto", maxCount: 1 },
-    { name: "governmentId", maxCount: 1 }
-  ]),
-  compressImage,
-  registerVendor
-); // register the vendor
+router.post( "/vendorregister", uploadGovId.fields([{ name: "profilePhoto", maxCount: 1 },]), compressImage, registerVendor); // register the vendor
 
-router.post(
-  "/register-activity",
-  uploadGovId.fields([
-    { name: "profilePhoto", maxCount: 1 },
-    { name: "governmentId", maxCount: 1 }
-  ]),
-  compressImage,
-  registerActivityVendor
-);
+router.post( "/register-activity", uploadGovId.fields([{ name: "profilePhoto", maxCount: 1 }]), compressImage, registerActivityVendor);
 
 router.post("/vendor/login", vendorLogin);
 
@@ -84,17 +68,7 @@ router.get(
 router.get("/activity-vendors/:activityName", getActivityVendors);
 
 
-router.post(
-  "/near-register",
-  uploadGovId.fields([
-    { name: "profile_photo", maxCount: 1 },
-    { name: "profile_photo2", maxCount: 1 },
-    { name: "profile_photo3", maxCount: 1 },
-    { name: "government_id", maxCount: 1 }
-  ]),
-  compressImage,
-  registerNearbyStall
-);
+router.post( "/near-register", uploadGovId.fields([ { name: "profile_photo", maxCount: 1 }, { name: "profile_photo2", maxCount: 1 }, { name: "profile_photo3", maxCount: 1 }]), compressImage, registerNearbyStall);
 
 
 

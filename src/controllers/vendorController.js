@@ -23,30 +23,20 @@ export const registerVendor = async (req, res) => {
         shopName,
         phone,
         whatsapp_number,
-        email,
-        password,
         category_id,
         experience,
         address1,
         address2,
         city,
         pincode,
-        business_description,
-        languages_known,
         availability,
         start_time,
         end_time,
-        terms_accepted
     } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const profilePhoto = req.files?.profilePhoto
         ? req.files.profilePhoto[0].filename
-        : null;
-
-    const governmentId = req.files?.governmentId
-        ? req.files.governmentId[0].filename
         : null;
 
     // =========================
@@ -59,12 +49,6 @@ export const registerVendor = async (req, res) => {
         });
     }
 
-    if (!password) {
-        return res.status(400).json({
-            success: false,
-            message: "Password is required"
-        });
-    }
 
     if (!/^\d{10}$/.test(phone)) {
         return res.status(400).json({
@@ -80,22 +64,12 @@ export const registerVendor = async (req, res) => {
         });
     }
 
-    if (
-        terms_accepted !== true &&
-        terms_accepted !== "true" &&
-        terms_accepted !== 1 &&
-        terms_accepted !== "1"
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: "Please accept Terms & Conditions"
-        });
-    }
+
 
     // =========================
     // CHECK DUPLICATE VENDOR
     // =========================
-    vendorModel.findVendorByEmailOrPhone(email, phone, (err, vendors) => {
+    vendorModel.findVendorByPhone(phone, (err, vendors) => {
         if (err) {
             return res.status(500).json({
                 success: false,
@@ -106,12 +80,6 @@ export const registerVendor = async (req, res) => {
         if (vendors.length > 0) {
             const vendor = vendors[0];
 
-            if (email && vendor.email === email) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Email already registered",
-                });
-            }
 
             if (vendor.phone === phone) {
                 return res.status(400).json({
@@ -129,8 +97,6 @@ export const registerVendor = async (req, res) => {
             shopName,
             phone,
             whatsappNumber: whatsapp_number || phone,
-            email,
-            password: hashedPassword,
             categoryId: category_id,
             experience,
             address1,
@@ -138,14 +104,9 @@ export const registerVendor = async (req, res) => {
             city,
             pincode,
             profilePhoto,
-            governmentId,
-            businessDescription: business_description,
-            languagesKnown: languages_known,
             availability,
             startTime: start_time,
             endTime: end_time,
-            termsAccepted: true,
-            termsAcceptedAt: new Date()
         };
         // =========================
         // INSERT VENDOR
@@ -157,7 +118,7 @@ export const registerVendor = async (req, res) => {
                 if (err.code === "ER_DUP_ENTRY") {
                     return res.status(400).json({
                         success: false,
-                        message: "Email already registered"
+                        message: "Phone number already registered"
                     });
                 }
 
@@ -332,7 +293,7 @@ export const registerVendor = async (req, res) => {
 //2. list the vendors
 
 export const getVendorList = (req, res) => {
-    vendorModel.getAllVendors((err, vendors) => {
+    vendorModel.getAllVendors((err, rows) => {
         if (err) {
             return res.status(500).json({
                 success: false,
@@ -340,24 +301,56 @@ export const getVendorList = (req, res) => {
             });
         }
 
-        const updatedVendors = vendors.map((vendor) => ({
-            ...vendor,
-            government_id_url: vendor.government_id
-                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.government_id}`
-                : null,
-            profile_url: vendor.profile_photo
-                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.profile_photo}`
-                : null,
+        const vendors = {};
 
-        }));
+        rows.forEach((row) => {
+            if (!vendors[row.id]) {
+                vendors[row.id] = {
+                    id: row.id,
+                    full_name: row.full_name,
+                    shop_name: row.shop_name,
+                    phone: row.phone,
+                    whatsapp_number: row.whatsapp_number,
+                    category_id: row.category_id,
+                    category_name: row.category_name,
+                    experience: row.experience,
+                    address1: row.address1,
+                    address2: row.address2,
+                    city: row.city,
+                    pincode: row.pincode,
+                    profile_photo: row.profile_photo,
+                    profile_url: row.profile_photo
+                        ? `${req.protocol}://${req.get("host")}/uploads/${row.profile_photo}`
+                        : null,
+                    average_rating: row.average_rating,
+                    total_reviews: row.total_reviews,
+                    availability: row.availability,
+                    start_time: row.start_time,
+                    end_time: row.end_time,
+                    rating: row.rating,
+                    upi_id: row.upi_id,
+                    created_at: row.created_at,
+
+                    services: [],
+                };
+            }
+
+            if (row.sub_service_id) {
+                vendors[row.id].services.push({
+                    vendor_service_id: row.vendor_service_id,
+                    sub_service_id: row.sub_service_id,
+                    service_name: row.service_name,
+                    price: row.price,
+                });
+            }
+        });
 
         res.status(200).json({
             success: true,
-            vendors: updatedVendors,
+            vendors: Object.values(vendors),
         });
     });
 };
-
 
 // 3. List the categroy list
 
@@ -459,24 +452,17 @@ export const getVendorDetails = (req, res) => {
             shop_name: results[0].shop_name,
             phone: results[0].phone,
             whatsapp_number: results[0].whatsapp_number,
-            email: results[0].email,
             experience: results[0].experience,
             address1: results[0].address1,
             address2: results[0].address2,
             city: results[0].city,
             pincode: results[0].pincode,
-            business_description: results[0].business_description,
-            languages_known: results[0].languages_known,
             availability: results[0].availability,
             start_time: results[0].start_time,
             end_time: results[0].end_time,
 
             profile_url: results[0].profile_photo
                 ? `${req.protocol}://${req.get("host")}/uploads/${results[0].profile_photo}`
-                : null,
-
-            government_id_url: results[0].government_id
-                ? `${req.protocol}://${req.get("host")}/uploads/${results[0].government_id}`
                 : null,
 
             category: {
@@ -1086,9 +1072,6 @@ export const getTopRatedVendorList = (req, res) => {
 
         const updatedVendors = vendors.map((vendor) => ({
             ...vendor,
-            government_id_url: vendor.government_id
-                ? `${req.protocol}://${req.get("host")}/uploads/${vendor.government_id}`
-                : null,
             profile_url: vendor.profile_photo
                 ? `${req.protocol}://${req.get("host")}/uploads/${vendor.profile_photo}`
                 : null,
@@ -1103,39 +1086,27 @@ export const getTopRatedVendorList = (req, res) => {
 
 
 export const registerActivityVendor = async (req, res) => {
-
     const {
         fullName,
         shopName,
         phone,
         whatsapp_number,
-        email,
-        password,
         activity_id,
         experience,
         address1,
         address2,
         city,
         pincode,
-        business_description,
-        languages_known,
         availability,
         start_time,
         end_time
     } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const profilePhoto = req.files?.profilePhoto
         ? req.files.profilePhoto[0].filename
         : null;
 
-    const governmentId = req.files?.governmentId
-        ? req.files.governmentId[0].filename
-        : null;
-
     // Validation
-
     if (!fullName || !phone || !activity_id) {
         return res.status(400).json({
             success: false,
@@ -1143,155 +1114,89 @@ export const registerActivityVendor = async (req, res) => {
         });
     }
 
-    vendorModel.findActivityVendorByEmailOrPhone(
-        email,
-        phone,
-        (err, vendors) => {
+    vendorModel.findActivityVendorByPhone(phone, (err, vendors) => {
+
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: "Database Error"
+            });
+        }
+
+        if (vendors.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone already exists"
+            });
+        }
+
+        const vendorData = {
+            fullName,
+            shopName,
+            phone,
+            whatsappNumber: whatsapp_number || phone,
+            activityId: activity_id,
+            experience,
+            address1,
+            address2,
+            city,
+            pincode,
+            profilePhoto,
+            availability,
+            startTime: start_time,
+            endTime: end_time
+        };
+
+        vendorModel.createActivityVendor(vendorData, (err, result) => {
 
             if (err) {
                 return res.status(500).json({
                     success: false,
-                    message: "Database Error"
+                    message: "Vendor Registration Failed",
+                    error: err.message
                 });
             }
 
-            if (vendors.length > 0) {
+            const vendorId = result.insertId;
 
-                return res.status(400).json({
-                    success: false,
-                    message: "Email or Phone already exists"
-                });
+            let plans = [];
 
+            try {
+                plans = typeof req.body.plans === "string"
+                    ? JSON.parse(req.body.plans)
+                    : req.body.plans;
+            } catch {
+                plans = [];
             }
 
-            const vendorData = {
+            if (!plans || plans.length === 0) {
+                return res.status(201).json({
+                    success: true,
+                    message: "Activity Vendor Registered Successfully",
+                    vendorId
+                });
+            }
 
-                fullName,
-                shopName,
-                phone,
-                whatsappNumber: whatsapp_number || phone,
-                email,
-                password: hashedPassword,
+            vendorModel.insertVendorPlans(vendorId, plans, (err2) => {
 
-                activityId: activity_id,
-
-                experience,
-
-                address1,
-                address2,
-
-                city,
-                pincode,
-
-                profilePhoto,
-                governmentId,
-
-                businessDescription: business_description,
-
-                languagesKnown: languages_known,
-
-                availability,
-
-                startTime: start_time,
-
-                endTime: end_time
-
-            };
-
-            vendorModel.createActivityVendor(
-
-                vendorData,
-
-                (err, result) => {
-
-                    if (err) {
-
-                        return res.status(500).json({
-
-                            success: false,
-
-                            message: "Vendor Registration Failed",
-                            error: err.message
-
-                        });
-
-                    }
-
-                    const vendorId = result.insertId;
-
-                    let plans = [];
-
-                    try {
-
-                        plans = typeof req.body.plans === "string"
-
-                            ? JSON.parse(req.body.plans)
-
-                            : req.body.plans;
-
-                    }
-
-                    catch {
-
-                        plans = [];
-
-                    }
-
-                    if (plans.length === 0) {
-
-                        return res.status(201).json({
-
-                            success: true,
-
-                            message: "Vendor Registered Successfully",
-
-                            vendorId
-
-                        });
-
-                    }
-
-                    vendorModel.insertVendorPlans(
-
-                        vendorId,
-
-                        plans,
-
-                        (err2) => {
-
-                            if (err2) {
-
-                                return res.status(500).json({
-
-                                    success: false,
-
-                                    message: "Vendor created but plans failed"
-
-                                });
-
-                            }
-
-                            return res.status(201).json({
-
-                                success: true,
-
-                                message: "Activity Vendor Registered Successfully",
-
-                                vendorId
-
-                            });
-
-                        }
-
-                    );
-
+                if (err2) {
+                    return res.status(500).json({
+                        success: false,
+                        message: "Vendor created but plans failed"
+                    });
                 }
 
-            );
+                return res.status(201).json({
+                    success: true,
+                    message: "Activity Vendor Registered Successfully",
+                    vendorId
+                });
 
-        }
+            });
 
-    );
+        });
+
+    });
 
 };
 
@@ -1385,8 +1290,6 @@ export const registerNearbyStall = async (req, res) => {
             shop_name,
             phone,
             whatsapp_number,
-            email,
-            password,
             address1,
             address2,
             city,
@@ -1396,11 +1299,7 @@ export const registerNearbyStall = async (req, res) => {
             latitude,
             longitude,
             opening_time,
-            closing_time,
-            listing_fee,
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
+            closing_time
         } = req.body;
 
         // ==========================
@@ -1421,13 +1320,6 @@ export const registerNearbyStall = async (req, res) => {
             });
         }
 
-        if (!password) {
-            return res.status(400).json({
-                success: false,
-                message: "Password is required"
-            });
-        }
-
         if (!/^\d{10}$/.test(phone)) {
             return res.status(400).json({
                 success: false,
@@ -1442,28 +1334,8 @@ export const registerNearbyStall = async (req, res) => {
             });
         }
 
-        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-            return res.status(400).json({
-                success: false,
-                message: "Payment verification details are missing"
-            });
-        }
-
-        const body = razorpay_order_id + "|" + razorpay_payment_id;
-        const expectedSignature = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-            .update(body.toString())
-            .digest("hex");
-
-        if (expectedSignature !== razorpay_signature) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid payment signature"
-            });
-        }
-
         // ==========================
-        // FILES
+        // FILES (Optional)
         // ==========================
 
         const profile_photo =
@@ -1475,31 +1347,14 @@ export const registerNearbyStall = async (req, res) => {
         const profile_photo3 =
             req.files?.profile_photo3?.[0]?.filename || null;
 
-        const government_id =
-            req.files?.government_id?.[0]?.filename || null;
-
-        if (!profile_photo) {
-            return res.status(400).json({
-                success: false,
-                message: "Profile photo is required"
-            });
-        }
-
-        if (!government_id) {
-            return res.status(400).json({
-                success: false,
-                message: "Government ID is required"
-            });
-        }
-
         // ==========================
         // CHECK DUPLICATE
         // ==========================
 
         db.query(
-            "SELECT id FROM nearby_stalls WHERE phone = ? OR email = ?",
-            [phone, email],
-            async (err, result) => {
+            "SELECT id FROM nearby_stalls WHERE phone = ?",
+            [phone],
+            (err, result) => {
 
                 if (err) {
                     return res.status(500).json({
@@ -1512,22 +1367,9 @@ export const registerNearbyStall = async (req, res) => {
                 if (result.length > 0) {
                     return res.status(400).json({
                         success: false,
-                        message: "Phone number or Email already registered"
+                        message: "Phone number already registered"
                     });
                 }
-
-                // ==========================
-                // HASH PASSWORD
-                // ==========================
-
-                const hashedPassword = await bcrypt.hash(password, 10);
-
-                // ==========================
-                // DEFAULT PAYMENT
-                // ==========================
-
-                const fee = listing_fee || 100;
-                const payment = "paid"; // verified above via signature check — always paid at this point
 
                 // ==========================
                 // INSERT
@@ -1535,35 +1377,25 @@ export const registerNearbyStall = async (req, res) => {
 
                 const sql = `
                     INSERT INTO nearby_stalls (
-                        shop_name,
-                        phone,
-                        whatsapp_number,
-                        email,
-                        password,
-                        address1,
-                        address2,
-                        city,
-                        pincode,
-                        description,
-                        google_map_link,
-                        latitude,
-                        longitude,
-                        profile_photo,
-                        profile_photo2,
-                        profile_photo3,
-                        government_id,
-                        opening_time,
-                        closing_time,
-                        listing_fee,
-                        payment_status,
-                        status,
-                        razorpay_order_id, 
-                        razorpay_payment_id, 
-                        razorpay_signature
-                    )
-                    VALUES (
-                        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
-                    )
+    shop_name,
+    phone,
+    whatsapp_number,
+    address1,
+    address2,
+    city,
+    pincode,
+    description,
+    google_map_link,
+    latitude,
+    longitude,
+    profile_photo,
+    profile_photo2,
+    profile_photo3,
+    opening_time,
+    closing_time,
+    status
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
 
                 db.query(
@@ -1572,28 +1404,20 @@ export const registerNearbyStall = async (req, res) => {
                         shop_name,
                         phone,
                         whatsapp_number || phone,
-                        email,
-                        hashedPassword,
                         address1,
                         address2,
                         city,
                         pincode,
                         description,
                         google_map_link,
-                        latitude,
-                        longitude,
+                         latitude,
+                         longitude,
                         profile_photo,
                         profile_photo2,
                         profile_photo3,
-                        government_id,
                         opening_time,
                         closing_time,
-                        fee,
-                        payment,
-                        "pending",
-                        razorpay_order_id,
-                        razorpay_payment_id,
-                        razorpay_signature
+                        "pending"
                     ],
                     (err, insertResult) => {
 
@@ -1613,7 +1437,6 @@ export const registerNearbyStall = async (req, res) => {
 
                     }
                 );
-
             }
         );
 
@@ -1627,7 +1450,6 @@ export const registerNearbyStall = async (req, res) => {
 
     }
 };
-
 
 export const getNearbyStalls = (req, res) => {
 
@@ -1656,9 +1478,6 @@ export const getNearbyStalls = (req, res) => {
             profile_url3: s.profile_photo
                 ? `${req.protocol}://${req.get("host")}/uploads/${s.profile_photo3}`
                 : null,
-            government_id_url: s.government_id
-                ? `${req.protocol}://${req.get("host")}/uploads/${s.government_id}`
-                : null
         }));
 
         return res.status(200).json({

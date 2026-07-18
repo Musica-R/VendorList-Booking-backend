@@ -15,10 +15,9 @@ const createBooking = (bookingData, callback) => {
       booking_date,
       booking_time,
       total_amount,
-      payment_status,
       booking_status
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -33,7 +32,6 @@ const createBooking = (bookingData, callback) => {
       bookingData.booking_date,
       bookingData.booking_time,
       bookingData.total_amount,
-      bookingData.payment_status,
       bookingData.booking_status,
     ],
     callback

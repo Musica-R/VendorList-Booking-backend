@@ -1,5 +1,4 @@
 import db from "../config/db.js";
-
 const createVendor = (vendorData, callback) => {
   const sql = `
     INSERT INTO vendors (
@@ -7,8 +6,6 @@ const createVendor = (vendorData, callback) => {
       shop_name,
       phone,
       whatsapp_number,
-      email,
-      password,
       category_id,
       experience,
       address1,
@@ -16,16 +13,11 @@ const createVendor = (vendorData, callback) => {
       city,
       pincode,
       profile_photo,
-      government_id,
-      business_description,
-      languages_known,
       availability,
       start_time,
-      end_time,
-      terms_accepted,
-      terms_accepted_at
+      end_time
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -35,8 +27,6 @@ const createVendor = (vendorData, callback) => {
       vendorData.shopName,
       vendorData.phone,
       vendorData.whatsappNumber,
-      vendorData.email,
-      vendorData.password,
       vendorData.categoryId,
       vendorData.experience,
       vendorData.address1,
@@ -44,28 +34,22 @@ const createVendor = (vendorData, callback) => {
       vendorData.city,
       vendorData.pincode,
       vendorData.profilePhoto,
-      vendorData.governmentId,
-      vendorData.businessDescription,
-      vendorData.languagesKnown,
       vendorData.availability,
       vendorData.startTime,
-      vendorData.endTime,
-      vendorData.termsAccepted,
-      vendorData.termsAcceptedAt,
+      vendorData.endTime
     ],
     callback
   );
 };
 
-
-const findVendorByEmail = (email, callback) => {
+const findVendorByPhone = (phone, callback) => {
   const sql = `
     SELECT *
     FROM vendors
-    WHERE email = ?
+    WHERE phone = ?
   `;
 
-  db.query(sql, [email], callback);
+  db.query(sql, [phone], callback);
 };
 
 const getVendorById = (vendorId, callback) => {
@@ -98,7 +82,6 @@ const getAllVendors = (callback) => {
       v.shop_name,
       v.phone,
       v.whatsapp_number,
-      v.email,
       v.category_id,
       sc.category_name,
       v.experience,
@@ -107,23 +90,38 @@ const getAllVendors = (callback) => {
       v.city,
       v.pincode,
       v.profile_photo,
-      v.government_id,
-      v.business_description,
-      v.languages_known,
+      v.average_rating,
+      v.total_reviews,
       v.availability,
       v.start_time,
       v.end_time,
       v.rating,
+      v.upi_id,
       v.created_at,
-      v.terms_accepted
+
+      vs.id AS vendor_service_id,
+      vs.price,
+
+      ss.id AS sub_service_id,
+      ss.service_name
+
     FROM vendors v
+
     LEFT JOIN service_categories sc
       ON v.category_id = sc.id
-    ORDER BY v.id DESC
+
+    LEFT JOIN vendor_services vs
+      ON v.id = vs.vendor_id
+
+    LEFT JOIN sub_services ss
+      ON vs.sub_service_id = ss.id
+
+    ORDER BY v.id DESC;
   `;
 
   db.query(sql, callback);
 };
+
 
 export const getServiceCategories = (callback) => {
   const sql = `
@@ -177,47 +175,43 @@ const insertVendorServices = (vendorId, services, callback) => {
 
 const getVendorDetails = (vendorId, callback) => {
   const sql = `
-        SELECT
-            v.id AS vendor_id, 
-            v.full_name,
-            v.shop_name,
-            v.phone,
-            v.whatsapp_number,
-            v.email,
-            v.experience,
-            v.address1,
-            v.address2,
-            v.city,
-            v.pincode,
-            v.profile_photo,
-            v.government_id,
-            v.business_description,
-            v.languages_known,
-            v.availability,
-            v.start_time,
-            v.end_time,
+    SELECT
+      v.id AS vendor_id,
+      v.full_name,
+      v.shop_name,
+      v.phone,
+      v.whatsapp_number,
+      v.experience,
+      v.address1,
+      v.address2,
+      v.city,
+      v.pincode,
+      v.profile_photo,
+      v.availability,
+      v.start_time,
+      v.end_time,
 
-            s.id AS category_id,
-            s.category_name,
+      s.id AS category_id,
+      s.category_name,
 
-            ss.id AS sub_service_id,
-            ss.service_name,
+      ss.id AS sub_service_id,
+      ss.service_name,
 
-            vs.price
+      vs.price
 
-        FROM vendors v
+    FROM vendors v
 
-        LEFT JOIN service_categories s  
-            ON s.id = v.category_id
+    LEFT JOIN service_categories s
+      ON s.id = v.category_id
 
-        LEFT JOIN vendor_services vs
-            ON vs.vendor_id = v.id
+    LEFT JOIN vendor_services vs
+      ON vs.vendor_id = v.id
 
-        LEFT JOIN sub_services ss
-            ON ss.id = vs.sub_service_id
+    LEFT JOIN sub_services ss
+      ON ss.id = vs.sub_service_id
 
-        WHERE v.id = ?
-    `;
+    WHERE v.id = ?
+  `;
 
   db.query(sql, [vendorId], callback);
 };
@@ -232,7 +226,6 @@ const getVendorsByCategoryId = (categoryId, callback) => {
       shop_name,
       phone,
       whatsapp_number,
-      email,
       category_id,
       experience,
       address1,
@@ -240,7 +233,6 @@ const getVendorsByCategoryId = (categoryId, callback) => {
       city,
       pincode,
       profile_photo,
-      business_description,
       availability,
       start_time,
       end_time
@@ -252,36 +244,6 @@ const getVendorsByCategoryId = (categoryId, callback) => {
   db.query(sql, [categoryId], callback);
 };
 
-// Find vendor by email
-const findVendorByEmailS = (email, callback) => {
-  const sql = `
-    SELECT * FROM vendors
-    WHERE email = ?
-  `;
-  db.query(sql, [email], callback);
-};
-
-// Save OTP
-const saveVendorOtp = (email, otp, expires, callback) => {
-  const sql = `
-    UPDATE vendors
-    SET otp_code = ?, otp_expires = ?
-    WHERE email = ?
-  `;
-  db.query(sql, [otp, expires, email], callback);
-};
-
-// Reset password
-const updateVendorPassword = (email, newPassword, callback) => {
-  const sql = `
-    UPDATE vendors
-    SET password = ?,
-        otp_code = NULL,
-        otp_expires = NULL
-    WHERE email = ?
-  `;
-  db.query(sql, [newPassword, email], callback);
-};
 
 const updateVendorUpiId = (vendorId, upiId, callback) => {
   const sql = `
@@ -311,7 +273,6 @@ const getTopRatedVendors = (callback) => {
       v.shop_name,
       v.phone,
       v.whatsapp_number,
-      v.email,
       v.category_id,
       sc.category_name,
       v.experience,
@@ -320,14 +281,10 @@ const getTopRatedVendors = (callback) => {
       v.city,
       v.pincode,
       v.profile_photo,
-      v.government_id,
-      v.business_description,
-      v.languages_known,
       v.availability,
       v.start_time,
       v.end_time,
-      v.rating,
-      v.terms_accepted
+      v.rating
     FROM vendors v
     LEFT JOIN service_categories sc
       ON v.category_id = sc.id
@@ -341,29 +298,24 @@ const getTopRatedVendors = (callback) => {
 const createActivityVendor = (vendorData, callback) => {
 
   const sql = `
-        INSERT INTO activity_vendors (
-            full_name,
-            shop_name,
-            phone,
-            whatsapp_number,
-            email,
-            password,
-            activity_id,
-            experience,
-            address1,
-            address2,
-            city,
-            pincode,
-            profile_photo,
-            government_id,
-            business_description,
-            languages_known,
-            availability,
-            start_time,
-            end_time
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    INSERT INTO activity_vendors (
+      full_name,
+      shop_name,
+      phone,
+      whatsapp_number,
+      activity_id,
+      experience,
+      address1,
+      address2,
+      city,
+      pincode,
+      profile_photo,
+      availability,
+      start_time,
+      end_time
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
 
   db.query(
     sql,
@@ -372,8 +324,6 @@ const createActivityVendor = (vendorData, callback) => {
       vendorData.shopName,
       vendorData.phone,
       vendorData.whatsappNumber,
-      vendorData.email,
-      vendorData.password,
       vendorData.activityId,
       vendorData.experience,
       vendorData.address1,
@@ -381,9 +331,6 @@ const createActivityVendor = (vendorData, callback) => {
       vendorData.city,
       vendorData.pincode,
       vendorData.profilePhoto,
-      vendorData.governmentId,
-      vendorData.businessDescription,
-      vendorData.languagesKnown,
       vendorData.availability,
       vendorData.startTime,
       vendorData.endTime
@@ -436,15 +383,14 @@ const getActivityCategories = (callback) => {
 };
 
 
-const findActivityVendorByEmailOrPhone = (email, phone, callback) => {
-
+const findActivityVendorByPhone = (phone, callback) => {
   const sql = `
-        SELECT *
-        FROM activity_vendors
-        WHERE email = ? OR phone = ?
-    `;
+    SELECT id
+    FROM activity_vendors
+    WHERE phone = ?
+  `;
 
-  db.query(sql, [email, phone], callback);
+  db.query(sql, [phone], callback);
 };
 
 
@@ -548,8 +494,7 @@ const addVendorService = (
 
 export default {
   createVendor,
-  findVendorByEmailOrPhone,
-  findVendorByEmail,
+  findVendorByPhone,
   getAllVendors,
   getServiceCategories,
   getSubServicesByCategoryId,
@@ -558,16 +503,13 @@ export default {
   getVendorDetails,
   getVendorsByCategoryId,
   getVendorById,
-  findVendorByEmailS,
-  saveVendorOtp,
-  updateVendorPassword,
   updateVendorUpiId,
   getVendorUpi,
   getTopRatedVendors,
   insertVendorPlans,
   getActivityCategories,
   createActivityVendor,
-  findActivityVendorByEmailOrPhone,
+ findActivityVendorByPhone,
   getActivityVendors,
   findSubServiceByName,
   addCustomSubService,

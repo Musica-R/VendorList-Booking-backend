@@ -1,5 +1,7 @@
 import db from "../config/db.js";
 import adminModel from "../models/adminModel.js";
+import bookingModel from "../models/bookingModel.js";
+import bookingItemModel from "../models/bookingItemModel.js";
 
 export const updateBookingStatus = (req, res) => {
   try {
@@ -65,10 +67,7 @@ export const getUserBookingsFull = (req, res) => {
       b.booking_time,
       b.total_amount,
       b.booking_status,
-      b.payment_status,
-      b.balance_amount,
-      b.balance_payment_status,
-
+    
       bi.id AS item_id,
       bi.sub_service_id,
       bi.price,
@@ -144,28 +143,14 @@ export const getUserBookingsFull = (req, res) => {
           booking_time: row.booking_time,
           total_amount: row.total_amount,
           booking_status: row.booking_status,
-          payment_status: row.payment_status,
-
-          balance_amount: row.balance_amount,
-          balance_payment_status: row.balance_payment_status,
-
-          payment: null,
-
+      
           items: [],
         });
       }
 
       const booking = bookingsMap.get(row.booking_id);
 
-      // ✅ ADD PAYMENT ONLY ONCE (prevents duplication)
-      if (!booking.payment && row.payment_id) {
-        booking.payment = {
-          payment_id: row.payment_id,
-          razorpay_payment_id: row.razorpay_payment_id,
-          paid_amount: row.paid_amount,
-        };
-      }
-
+  
       // ✅ ADD ITEMS WITHOUT DUPLICATION
       if (row.item_id) {
         const exists = booking.items.some(
@@ -262,4 +247,68 @@ export const getUserWalletBalance = (req, res) => {
 
   }
 
+};
+
+
+
+export const createBooking = async (req, res) => {
+  try {
+    const bookingData = req.body;
+
+    const booking_number = "BK" + Date.now();
+
+    const booking = await new Promise((resolve, reject) => {
+      bookingModel.createBooking(
+        {
+          booking_number,
+          user_id: bookingData.user_id,
+          vendor_id: bookingData.vendor_id,
+          customer_name: bookingData.customer_name,
+          customer_phone: bookingData.customer_phone,
+          customer_address: bookingData.customer_address,
+          booking_date: bookingData.booking_date,
+          booking_time: bookingData.booking_time,
+          total_amount: bookingData.total_amount,
+          booking_status: "pending",
+        },
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        }
+      );
+    });
+
+    const bookingId = booking.insertId;
+
+    // Insert booking items
+    for (const item of bookingData.services) {
+      await new Promise((resolve, reject) => {
+        bookingItemModel.createBookingItem(
+          {
+            booking_id: bookingId,
+            category_id: bookingData.category_id,
+            sub_service_id: item.sub_service_id,
+            price: item.price,
+            quantity: 1,
+          },
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      bookingId,
+      bookingNumber: booking_number,
+      message: "Booking Created Successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
